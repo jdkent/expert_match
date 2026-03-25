@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
 from app.core.config import Settings
@@ -42,7 +42,7 @@ def test_matching_service_can_disable_publication_abstract_search():
         retrieval_service=retrieval_service,
     )
 
-    assert service._allowed_source_types() == ["manual_expertise"]
+    assert service._allowed_source_types() == ["manual_expertise", "short_bio"]
 
 
 def test_short_query_requires_lexical_overlap():
@@ -81,7 +81,7 @@ def test_long_query_does_not_require_lexical_overlap():
 
 
 def test_matching_service_filters_short_query_matches_without_lexical_overlap():
-    session_factory = Mock()
+    session_factory = MagicMock()
     session = session_factory.return_value.__enter__.return_value
     session_factory.return_value = session
     session.__enter__ = Mock(return_value=session)
@@ -126,3 +126,23 @@ def test_matching_service_filters_short_query_matches_without_lexical_overlap():
     payload = service.create_match_query(type("Payload", (), {"query_text": "socks"})())
 
     assert payload["matches"] == []
+
+
+def test_matching_service_matches_short_bio_content(client):
+    expert_id = create_expert(
+        client,
+        full_name="Ada Lovelace",
+        email="ada@example.org",
+        expertise_entries=["Metadata workflows"],
+        short_bio="Focuses on computational creativity for scientific discovery.",
+    )["profile_id"]
+
+    payload = client.post(
+        "/api/v1/match-queries",
+        json={
+            "query_text": "computational creativity for scientific discovery",
+        },
+    ).json()
+
+    assert payload["matches"][0]["expert_id"] == expert_id
+    assert payload["matches"][0]["short_bio"] == "Focuses on computational creativity for scientific discovery."

@@ -16,7 +16,7 @@ def test_thresholded_search_deduplicates_experts(client):
         client,
         full_name="Katherine Johnson",
         email="katherine@example.org",
-        expertise_entries=["Orbital mechanics and demonstration planning"],
+        expertise_entries=["Research workflow planning for metadata-heavy demos"],
     )["profile_id"]
 
     match_response = client.post(

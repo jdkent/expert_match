@@ -17,6 +17,7 @@ describe("MatchedExpertList", () => {
             expert_id: "11111111-1111-1111-1111-111111111111",
             full_name: "Ada Lovelace",
             email: "ada@example.org",
+            short_bio: "Mathematician interested in analytical engines and scientific workflows.",
             aggregate_similarity_score: 0.91,
             matched_document_excerpt: "Metadata workflows",
           },
@@ -27,6 +28,9 @@ describe("MatchedExpertList", () => {
     );
 
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(
+      screen.getByText("Mathematician interested in analytical engines and scientific workflows."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Selected")).toBeInTheDocument();
   });
 });

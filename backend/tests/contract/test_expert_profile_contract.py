@@ -7,6 +7,7 @@ def test_create_and_edit_profile_contract(client):
         json={
             "full_name": "Ada Lovelace",
             "email": "ada@example.org",
+            "short_bio": "Mathematician and computing pioneer.",
             "expertise_entries": ["Metadata workflows"],
         },
     )
@@ -21,15 +22,22 @@ def test_create_and_edit_profile_contract(client):
     )
     assert get_response.status_code == 200
     assert get_response.json()["email"] == "ada@example.org"
+    assert get_response.json()["short_bio"] == "Mathematician and computing pioneer."
 
     patch_response = client.patch(
         "/api/v1/expert-access/profile",
         json={
             "access_key": create_payload["access_key"],
+            "short_bio": "Mathematician focused on analytical engines.",
             "expertise_entries": ["Metadata workflows", "ORCID support"],
         },
     )
     assert patch_response.status_code == 202
+    refreshed_response = client.post(
+        "/api/v1/expert-access/profile",
+        json={"access_key": create_payload["access_key"]},
+    )
+    assert refreshed_response.json()["short_bio"] == "Mathematician focused on analytical engines."
 
 
 def test_delete_profile_requires_confirmation(client):

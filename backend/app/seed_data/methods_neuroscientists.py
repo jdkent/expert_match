@@ -17,6 +17,7 @@ class SeedExpertProfile:
     full_name: str
     email: str
     orcid_id: str
+    short_bio: str
     website_url: str
     x_handle: str
     linkedin_identifier: str
@@ -36,10 +37,12 @@ def _seed_expert(
 ) -> SeedExpertProfile:
     slug = _slugify_name(full_name)
     handle = _compact_handle(full_name)
+    bio_focus = ", ".join(expertise_entries[:2])
     return SeedExpertProfile(
         full_name=full_name,
         email=email,
         orcid_id=orcid_id,
+        short_bio=f"Methods-focused researcher working on {bio_focus}.",
         website_url=f"https://profiles.seeded-experts.dev/{slug}",
         x_handle=f"{handle}_methods",
         linkedin_identifier=f"{slug}",

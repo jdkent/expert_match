@@ -8,6 +8,7 @@ export type MatchedExpert = {
   expert_id: string;
   full_name: string;
   email: string;
+  short_bio?: string;
   aggregate_similarity_score: number;
   matched_document_excerpt: string;
   website_url?: string;

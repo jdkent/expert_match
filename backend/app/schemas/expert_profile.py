@@ -12,6 +12,7 @@ ExpertiseEntries = Annotated[list[str], Field(min_length=1)]
 class ExpertProfileInput(BaseModel):
     full_name: str
     email: EmailStr
+    short_bio: str | None = Field(default=None, max_length=500)
     orcid_id: str | None = None
     website_url: HttpUrl | None = None
     x_handle: str | None = None
@@ -24,6 +25,7 @@ class ExpertProfileInput(BaseModel):
 
 class ExpertProfileEditInput(BaseModel):
     full_name: str | None = None
+    short_bio: str | None = Field(default=None, max_length=500)
     orcid_id: str | None = None
     website_url: HttpUrl | None = None
     x_handle: str | None = None
@@ -56,6 +58,7 @@ class ExpertProfileSummary(APIModel):
     expert_id: UUID
     full_name: str
     email: EmailStr
+    short_bio: str | None = None
     orcid_id: str | None = None
     website_url: str | None = None
     x_handle: str | None = None

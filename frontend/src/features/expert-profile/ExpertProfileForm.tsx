@@ -13,6 +13,7 @@ type Props = {
 const emptyForm = {
   full_name: "",
   email: "",
+  short_bio: "",
   orcid_id: "",
   website_url: "",
   x_handle: "",
@@ -48,6 +49,7 @@ const profileFields: Array<{
   type?: "email" | "url" | "text";
   placeholder?: string;
   hint?: string;
+  multiline?: boolean;
 }> = [
   {
     key: "full_name",
@@ -59,6 +61,13 @@ const profileFields: Array<{
     label: "Email",
     type: "email",
     placeholder: "ada@example.org",
+  },
+  {
+    key: "short_bio",
+    label: "Short bio",
+    placeholder: "Cognitive neuroscientist focused on reproducible neuroimaging methods.",
+    hint: "Optional. One or two sentences that help requesters understand your background.",
+    multiline: true,
   },
   {
     key: "orcid_id",
@@ -118,6 +127,7 @@ export function ExpertProfileForm({ onCreated }: Props) {
       }
       return expertProfilesApi.createProfile({
         ...form,
+        short_bio: form.short_bio || null,
         orcid_id: form.orcid_id || null,
         website_url: form.website_url || null,
         x_handle: form.x_handle || null,
@@ -152,19 +162,34 @@ export function ExpertProfileForm({ onCreated }: Props) {
         </p>
       </div>
       <div className="form-grid">
-        {profileFields.map(({ key, label, placeholder, type = "text", hint }) => (
+        {profileFields.map(({ key, label, placeholder, type = "text", hint, multiline }) => (
           <label key={key} className="field">
             <span>{label}</span>
-            <input
-              name={key}
-              type={type}
-              placeholder={placeholder}
-              value={form[key as keyof typeof form]}
-              onChange={(event) => {
-                setFormError("");
-                setForm((current) => ({ ...current, [key]: event.target.value }));
-              }}
-            />
+            {multiline ? (
+              <textarea
+                name={key}
+                aria-label={label}
+                placeholder={placeholder}
+                maxLength={500}
+                value={form[key as keyof typeof form]}
+                onChange={(event) => {
+                  setFormError("");
+                  setForm((current) => ({ ...current, [key]: event.target.value }));
+                }}
+              />
+            ) : (
+              <input
+                name={key}
+                aria-label={label}
+                type={type}
+                placeholder={placeholder}
+                value={form[key as keyof typeof form]}
+                onChange={(event) => {
+                  setFormError("");
+                  setForm((current) => ({ ...current, [key]: event.target.value }));
+                }}
+              />
+            )}
             {hint ? <span className="field-hint">{hint}</span> : null}
           </label>
         ))}

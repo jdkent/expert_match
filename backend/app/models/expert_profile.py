@@ -15,6 +15,7 @@ class ExpertProfile(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
     full_name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    short_bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     orcid_id: Mapped[str | None] = mapped_column(String(19), unique=True, nullable=True)
     website_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     x_handle: Mapped[str | None] = mapped_column(String(128), nullable=True)

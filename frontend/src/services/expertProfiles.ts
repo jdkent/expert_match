@@ -3,6 +3,7 @@ import { api } from "./api";
 export type ExpertProfilePayload = {
   full_name: string;
   email: string;
+  short_bio?: string | null;
   orcid_id?: string | null;
   website_url?: string | null;
   x_handle?: string | null;
@@ -17,6 +18,7 @@ export type EditableExpertProfile = {
   expert_id: string;
   full_name: string;
   email: string;
+  short_bio?: string | null;
   orcid_id?: string | null;
   website_url?: string | null;
   x_handle?: string | null;

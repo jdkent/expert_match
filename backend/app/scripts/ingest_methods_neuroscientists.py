@@ -32,13 +32,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def ingest_expert(client: httpx.Client, expert: SeedExpertProfile) -> tuple[str, str]:
+def ingest_expert(client: httpx.Client, expert: SeedExpertProfile) -> tuple[str | None, str | None, bool]:
     create_response = client.post(
         "/api/v1/experts",
         json={
             "full_name": expert.full_name,
             "email": expert.email,
             "orcid_id": expert.orcid_id,
+            "short_bio": expert.short_bio,
             "website_url": expert.website_url,
             "x_handle": expert.x_handle,
             "linkedin_identifier": expert.linkedin_identifier,
@@ -48,12 +49,14 @@ def ingest_expert(client: httpx.Client, expert: SeedExpertProfile) -> tuple[str,
             "available_slot_ids": None,
         },
     )
+    if create_response.status_code == 409:
+        return None, None, False
     create_response.raise_for_status()
     created_payload = create_response.json()
     access_key = created_payload.get("access_key")
     if not access_key:
         raise RuntimeError(f"{expert.full_name} did not return an access key")
-    return created_payload["profile_id"], access_key
+    return created_payload["profile_id"], access_key, True
 
 
 def run(api_base_url: str, *, limit: int, timeout_seconds: float) -> int:
@@ -61,14 +64,28 @@ def run(api_base_url: str, *, limit: int, timeout_seconds: float) -> int:
     if not selected_experts:
         raise ValueError("At least one expert must be selected for ingestion")
     timeout = httpx.Timeout(connect=10.0, read=timeout_seconds, write=60.0, pool=60.0)
+    seeded_count = 0
+    skipped_count = 0
     with httpx.Client(base_url=api_base_url.rstrip("/"), timeout=timeout) as client:
         for expert in selected_experts:
-            profile_id, access_key = ingest_expert(client, expert)
+            profile_id, access_key, created = ingest_expert(client, expert)
+            if created:
+                seeded_count += 1
+                print(
+                    f"seeded {expert.full_name} <{expert.email}> "
+                    f"orcid={expert.orcid_id} profile_id={profile_id} access_key={access_key}"
+                )
+                continue
+
+            skipped_count += 1
             print(
-                f"seeded {expert.full_name} <{expert.email}> "
-                f"orcid={expert.orcid_id} profile_id={profile_id} access_key={access_key}"
+                f"skipped {expert.full_name} <{expert.email}> "
+                f"orcid={expert.orcid_id} reason=profile already exists"
             )
-    print(f"completed ingestion for {len(selected_experts)} experts")
+    print(
+        f"completed ingestion for {len(selected_experts)} experts "
+        f"(seeded={seeded_count}, skipped={skipped_count})"
+    )
     return 0
 
 

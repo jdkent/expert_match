@@ -76,6 +76,7 @@ class MatchingService:
                         "matched_document_excerpt": document.document_text[:180],
                         "full_name": profile.full_name,
                         "email": profile.email,
+                        "short_bio": profile.short_bio,
                         "website_url": profile.website_url,
                         "x_handle": profile.x_handle,
                         "linkedin_identifier": profile.linkedin_identifier,
@@ -116,6 +117,7 @@ class MatchingService:
                     "expert_id": match["expert_profile_id"],
                     "full_name": match["full_name"],
                     "email": match["email"],
+                    "short_bio": match["short_bio"],
                     "aggregate_similarity_score": match["aggregate_similarity_score"],
                     "matched_document_excerpt": match["matched_document_excerpt"],
                     "website_url": match["website_url"],
@@ -129,7 +131,7 @@ class MatchingService:
         }
 
     def _allowed_source_types(self) -> list[str]:
-        allowed_source_types = [SourceType.MANUAL_EXPERTISE.value]
+        allowed_source_types = [SourceType.MANUAL_EXPERTISE.value, SourceType.SHORT_BIO.value]
         if self.settings.search_include_publication_abstracts:
             allowed_source_types.append(SourceType.PUBLICATION_ABSTRACT.value)
         return allowed_source_types

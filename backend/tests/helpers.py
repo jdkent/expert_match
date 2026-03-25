@@ -7,6 +7,7 @@ def create_expert(
     full_name: str,
     email: str,
     expertise_entries: list[str],
+    short_bio: str | None = None,
     orcid_id: str | None = None,
     available_slot_ids: list[str] | None = None,
 ):
@@ -15,6 +16,7 @@ def create_expert(
         json={
             "full_name": full_name,
             "email": email,
+            "short_bio": short_bio,
             "orcid_id": orcid_id,
             "expertise_entries": expertise_entries,
             "available_slot_ids": available_slot_ids,

@@ -8,7 +8,7 @@ from app.core.config import LEGACY_EMBEDDING_MODEL_NAME, get_settings
 from app.core.store import utcnow
 from app.db.session import get_session_factory
 from app.models.backfill_run import BackfillRun
-from app.models.enums import EnrichmentTriggerSource
+from app.models.enums import EnrichmentTriggerSource, SourceType
 from app.models.expert_availability_slot import ExpertAvailabilitySlot
 from app.models.expert_profile import ExpertProfile
 from app.models.expert_query import ExpertQuery
@@ -95,14 +95,25 @@ def mark_legacy_embeddings(*, session_factory, target_embedding_model: str) -> i
         return docs_updated + queries_updated
 
 
-def _profile_needs_reembedding(session, *, profile_id: str, target_embedding_model: str) -> bool:
+def _profile_needs_reembedding(session, *, profile: ExpertProfile, target_embedding_model: str) -> bool:
     embedding_models = session.scalars(
         select(distinct(ExpertSearchDocument.embedding_model)).where(
-            ExpertSearchDocument.expert_profile_id == profile_id,
+            ExpertSearchDocument.expert_profile_id == profile.id,
             ExpertSearchDocument.is_active.is_(True),
         )
     ).all()
-    return embedding_models != [target_embedding_model]
+    if embedding_models != [target_embedding_model]:
+        return True
+    if not profile.short_bio:
+        return False
+    short_bio_document_id = session.scalar(
+        select(ExpertSearchDocument.id).where(
+            ExpertSearchDocument.expert_profile_id == profile.id,
+            ExpertSearchDocument.source_type == SourceType.SHORT_BIO.value,
+            ExpertSearchDocument.is_active.is_(True),
+        )
+    )
+    return short_bio_document_id is None
 
 
 def reembed_search_documents(*, session_factory, service: ExpertProfileService, target_embedding_model: str) -> int:
@@ -133,7 +144,7 @@ def reembed_search_documents(*, session_factory, service: ExpertProfileService, 
                 continue
             if not _profile_needs_reembedding(
                 session,
-                profile_id=profile.id,
+                profile=profile,
                 target_embedding_model=target_embedding_model,
             ):
                 continue

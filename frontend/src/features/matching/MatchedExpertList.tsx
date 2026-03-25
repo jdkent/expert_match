@@ -41,7 +41,10 @@ export function MatchedExpertList({ experts, selectedExpertId, onToggleExpert }:
               </label>
               <span className="chip">Score {expert.aggregate_similarity_score.toFixed(3)}</span>
             </div>
-            <h3>{expert.full_name}</h3>
+            <div className="expert-result-heading">
+              <h3>{expert.full_name}</h3>
+              {expert.short_bio ? <p className="muted expert-result-bio">{expert.short_bio}</p> : null}
+            </div>
             <p>{expert.matched_document_excerpt}</p>
             <SocialLinkChips
               websiteUrl={expert.website_url}

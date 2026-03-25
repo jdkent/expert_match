@@ -12,6 +12,7 @@ class MatchedExpertSummary(APIModel):
     expert_id: UUID
     full_name: str
     email: str
+    short_bio: str | None = None
     aggregate_similarity_score: float
     matched_document_excerpt: str
     website_url: str | None = None

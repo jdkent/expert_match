@@ -25,6 +25,9 @@ describe("ExpertProfileForm", () => {
     renderWithProviders(<ExpertProfileForm onCreated={() => undefined} />);
     fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Ada Lovelace" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ada@example.org" } });
+    fireEvent.change(screen.getByLabelText("Short bio"), {
+      target: { value: "Mathematician and scientific computing pioneer." },
+    });
     fireEvent.change(screen.getByLabelText("Expertise entry 1"), {
       target: { value: "Metadata workflows" },
     });
@@ -39,7 +42,10 @@ describe("ExpertProfileForm", () => {
     expect(screen.getByText("Return to search")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/experts",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"short_bio":"Mathematician and scientific computing pioneer."'),
+      }),
     );
   });
 

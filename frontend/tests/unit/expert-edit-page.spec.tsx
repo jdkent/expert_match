@@ -33,6 +33,7 @@ describe("ExpertEditPage", () => {
         expert_id: "11111111-1111-1111-1111-111111111111",
         full_name: "Ada Lovelace",
         email: "ada@example.org",
+        short_bio: "Mathematician and scientific computing pioneer.",
         orcid_id: null,
         website_url: null,
         x_handle: null,
@@ -57,5 +58,6 @@ describe("ExpertEditPage", () => {
       expect(screen.getByRole("heading", { name: "Edit profile" })).toBeInTheDocument();
     });
     expect(screen.getByDisplayValue("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Mathematician and scientific computing pioneer.")).toBeInTheDocument();
   });
 });

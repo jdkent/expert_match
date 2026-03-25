@@ -423,6 +423,15 @@ button {
   padding-right: 0.2rem;
 }
 
+.expert-result-heading {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.expert-result-bio {
+  margin: 0;
+}
+
 .form-grid {
   display: grid;
   gap: 0.95rem;

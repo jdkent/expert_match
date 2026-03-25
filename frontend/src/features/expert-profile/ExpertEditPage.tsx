@@ -52,6 +52,7 @@ export function ExpertEditPage() {
     }
     setDraft({
       full_name: data.full_name,
+      short_bio: data.short_bio ?? "",
       orcid_id: data.orcid_id ?? "",
       website_url: data.website_url ?? "",
       x_handle: data.x_handle ?? "",
@@ -66,6 +67,7 @@ export function ExpertEditPage() {
     mutationFn: async () =>
       expertProfilesApi.updateProfile(submittedAccessKey!, {
         full_name: draft.full_name,
+        short_bio: draft.short_bio || null,
         orcid_id: draft.orcid_id || null,
         website_url: draft.website_url || null,
         x_handle: draft.x_handle || null,
@@ -165,6 +167,7 @@ export function ExpertEditPage() {
         <div className="form-grid">
           {[
             ["full_name", data.full_name],
+            ["short_bio", data.short_bio ?? ""],
             ["orcid_id", data.orcid_id ?? ""],
             ["website_url", data.website_url ?? ""],
             ["x_handle", data.x_handle ?? ""],
@@ -174,15 +177,28 @@ export function ExpertEditPage() {
           ].map(([key, value]) => (
             <label key={key} className="field">
               <span>{key.replaceAll("_", " ")}</span>
-              <input
-                value={draft[key] ?? value}
-                onChange={(event) =>
-                  {
-                    setSaveState("");
-                    setDraft((current) => ({ ...current, [key]: event.target.value }));
+              {key === "short_bio" ? (
+                <textarea
+                  maxLength={500}
+                  value={draft[key] ?? value}
+                  onChange={(event) =>
+                    {
+                      setSaveState("");
+                      setDraft((current) => ({ ...current, [key]: event.target.value }));
+                    }
                   }
-                }
-              />
+                />
+              ) : (
+                <input
+                  value={draft[key] ?? value}
+                  onChange={(event) =>
+                    {
+                      setSaveState("");
+                      setDraft((current) => ({ ...current, [key]: event.target.value }));
+                    }
+                  }
+                />
+              )}
             </label>
           ))}
           <div className="field">

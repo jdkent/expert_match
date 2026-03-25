@@ -29,6 +29,13 @@ from app.services.orcid_client import OrcidClient
 
 
 class ExpertProfileService:
+    @staticmethod
+    def _optional_text(value: str | None) -> str | None:
+        if value is None:
+            return None
+        trimmed = value.strip()
+        return trimmed or None
+
     def __init__(
         self,
         *,
@@ -73,6 +80,7 @@ class ExpertProfileService:
                         id=str(uuid4()),
                         full_name=payload.full_name.strip(),
                         email=normalized_email,
+                        short_bio=self._optional_text(payload.short_bio),
                         orcid_id=payload.orcid_id,
                         website_url=str(payload.website_url) if payload.website_url else None,
                         x_handle=payload.x_handle,
@@ -95,6 +103,7 @@ class ExpertProfileService:
                             detail="A profile already exists for this email address; use the expert access key to update it.",
                         )
                     profile.full_name = payload.full_name.strip()
+                    profile.short_bio = self._optional_text(payload.short_bio)
                     profile.orcid_id = payload.orcid_id
                     profile.website_url = str(payload.website_url) if payload.website_url else None
                     profile.x_handle = payload.x_handle
@@ -133,6 +142,8 @@ class ExpertProfileService:
                 profile = self._profile_for_access_key(session, access_key)
                 if payload.full_name is not None:
                     profile.full_name = payload.full_name.strip()
+                if "short_bio" in payload.model_fields_set:
+                    profile.short_bio = self._optional_text(payload.short_bio)
                 if "orcid_id" in payload.model_fields_set:
                     self._validate_orcid(payload.orcid_id)
                     profile.orcid_id = payload.orcid_id
@@ -226,15 +237,18 @@ class ExpertProfileService:
                 .where(ExpertiseEntry.expert_profile_id == profile.id, ExpertiseEntry.is_active.is_(True))
                 .order_by(ExpertiseEntry.entry_order.asc())
             ).all()
-            for expertise in expertise_entries:
-                vector = self.embedding_service.embed_document(expertise.entry_text)
+            for source_type, source_record_id, document_text in self._manual_search_documents(
+                profile=profile,
+                expertise_entries=expertise_entries,
+            ):
+                vector = self.embedding_service.embed_document(document_text)
                 session.add(
                     ExpertSearchDocument(
                         id=str(uuid4()),
                         expert_profile_id=profile.id,
-                        source_type=SourceType.MANUAL_EXPERTISE.value,
-                        source_record_id=expertise.id,
-                        document_text=expertise.entry_text,
+                        source_type=source_type,
+                        source_record_id=source_record_id,
+                        document_text=document_text,
                         embedding_vector=vector,
                         embedding_model=self.embedding_service.document_embedding_label(),
                         is_active=True,
@@ -347,6 +361,30 @@ class ExpertProfileService:
         with self._futures_lock:
             self._enrichment_futures.discard(future)
 
+    def _manual_search_documents(
+        self,
+        *,
+        profile: ExpertProfile,
+        expertise_entries: list[ExpertiseEntry],
+    ) -> list[tuple[str, str, str]]:
+        documents = [
+            (
+                SourceType.MANUAL_EXPERTISE.value,
+                expertise.id,
+                expertise.entry_text,
+            )
+            for expertise in expertise_entries
+        ]
+        if profile.short_bio:
+            documents.append(
+                (
+                    SourceType.SHORT_BIO.value,
+                    profile.id,
+                    profile.short_bio,
+                )
+            )
+        return documents
+
     def _serialize_profile(self, session: Session, profile: ExpertProfile) -> dict:
         expertise_entries = session.scalars(
             select(ExpertiseEntry)
@@ -357,6 +395,7 @@ class ExpertProfileService:
             "expert_id": profile.id,
             "full_name": profile.full_name,
             "email": profile.email,
+            "short_bio": profile.short_bio,
             "orcid_id": profile.orcid_id,
             "website_url": profile.website_url,
             "x_handle": profile.x_handle,

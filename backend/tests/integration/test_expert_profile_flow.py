@@ -17,6 +17,7 @@ def test_expert_submission_access_key_edit_and_deletion_flow(client):
         json={
             "full_name": "Russell Poldrack",
             "email": "ada@example.org",
+            "short_bio": "Cognitive neuroscientist focused on reproducible neuroimaging methods.",
             "orcid_id": "0000-0001-6755-0259",
             "website_url": "https://ada.example.org",
             "expertise_entries": ["Metadata workflows", "Publication cleanup"],
@@ -30,6 +31,7 @@ def test_expert_submission_access_key_edit_and_deletion_flow(client):
         "/api/v1/expert-access/profile",
         json={"access_key": access_key},
     )
+    assert profile_response.json()["short_bio"] == "Cognitive neuroscientist focused on reproducible neuroimaging methods."
     assert profile_response.json()["orcid_id"] == "0000-0001-6755-0259"
     assert len(profile_response.json()["availability_slots"]) == 180
 
@@ -40,6 +42,7 @@ def test_expert_submission_access_key_edit_and_deletion_flow(client):
         "/api/v1/expert-access/profile",
         json={
             "access_key": access_key,
+            "short_bio": "Neuroimaging methods expert and open science advocate.",
             "expertise_entries": ["Metadata workflows", "ORCID adoption"],
             "available_slot_ids": chosen_slot_ids,
         },
@@ -51,8 +54,18 @@ def test_expert_submission_access_key_edit_and_deletion_flow(client):
         "/api/v1/expert-access/profile",
         json={"access_key": access_key},
     ).json()
+    assert updated_profile["short_bio"] == "Neuroimaging methods expert and open science advocate."
     assert updated_profile["expertise_entries"] == ["Metadata workflows", "ORCID adoption"]
     assert sum(1 for slot in updated_profile["availability_slots"] if slot["is_available"]) == 2
+
+    match_response = client.post(
+        "/api/v1/match-queries",
+        json={
+            "query_text": "ORCID adoption",
+        },
+    )
+    assert match_response.status_code == 201
+    assert match_response.json()["matches"][0]["short_bio"] == "Neuroimaging methods expert and open science advocate."
 
     delete_response = client.request(
         "DELETE",
@@ -61,13 +74,13 @@ def test_expert_submission_access_key_edit_and_deletion_flow(client):
     )
     assert delete_response.status_code == 202
 
-    match_response = client.post(
+    post_delete_match_response = client.post(
         "/api/v1/match-queries",
         json={
             "query_text": "ORCID adoption",
         },
     )
-    assert match_response.json()["matches"] == []
+    assert post_delete_match_response.json()["matches"] == []
 
 
 def test_duplicate_submission_requires_existing_access_key(client):

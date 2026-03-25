@@ -18,6 +18,7 @@ class DiscoverabilityStatus(StrEnum):
 
 class SourceType(StrEnum):
     MANUAL_EXPERTISE = "manual_expertise"
+    SHORT_BIO = "short_bio"
     PUBLICATION_ABSTRACT = "publication_abstract"
 
 
