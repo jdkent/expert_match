@@ -224,6 +224,18 @@ export function ExpertEditPage() {
         <AvailabilityGrid
           slots={data.availability_slots}
           selectedSlotIds={selectedSlotIds}
+          onSelectAll={() => {
+            setSaveState("");
+            setSelectedSlotIds(
+              data.availability_slots
+                .filter((slot) => slot.is_available)
+                .map((slot) => slot.slot_id),
+            );
+          }}
+          onClearAll={() => {
+            setSaveState("");
+            setSelectedSlotIds([]);
+          }}
           onSetSlotSelection={(slotId, isSelected) =>
             {
               setSaveState("");

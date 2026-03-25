@@ -521,6 +521,19 @@ button {
   gap: 0.5rem;
 }
 
+.availability-controls {
+  display: grid;
+  justify-items: end;
+  gap: 0.5rem;
+}
+
+.availability-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -530,6 +543,12 @@ button {
   background: var(--accent-soft);
   padding: 0.35rem 0.7rem;
   border: 1px solid rgba(242, 140, 40, 0.16);
+}
+
+.availability-bulk-action {
+  min-height: 2.2rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
 }
 
 .select-chip {
@@ -726,6 +745,12 @@ button {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .availability-controls,
+  .availability-bulk-actions {
+    justify-items: start;
+    justify-content: flex-start;
   }
 
   .topbar {

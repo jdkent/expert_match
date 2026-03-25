@@ -148,6 +148,8 @@ export function ExpertProfileForm({ onCreated }: Props) {
             attendee_request_count: 0,
           }))}
           selectedSlotIds={selectedSlotIds}
+          onSelectAll={() => setSelectedSlotIds(canonicalSlots.map((slot) => slot.slot_id))}
+          onClearAll={() => setSelectedSlotIds([])}
           onSetSlotSelection={(slotId, isSelected) =>
             setSelectedSlotIds((current) =>
               isSelected

@@ -12,6 +12,8 @@ type Props = {
   slots: AvailabilitySlot[];
   selectedSlotIds?: string[];
   onSetSlotSelection?: (slotId: string, isSelected: boolean) => void;
+  onSelectAll?: () => void;
+  onClearAll?: () => void;
 };
 
 function formatDayLabel(date: string) {
@@ -31,6 +33,8 @@ export function AvailabilityGrid({
   slots,
   selectedSlotIds = [],
   onSetSlotSelection,
+  onSelectAll,
+  onClearAll,
 }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const dragValueRef = useRef<boolean | null>(null);
@@ -120,11 +124,35 @@ export function AvailabilityGrid({
               : "Read the OHBM 2026 Bordeaux timetable by day and time."}
           </p>
         </div>
-        <div className="chip-row">
-          <span className="chip">
-            {selectedCount} {selectedCount === 1 ? "slot selected" : "slots selected"}
-          </span>
-          {onSetSlotSelection ? <span className="chip">Drag to paint</span> : null}
+        <div className="availability-controls">
+          <div className="chip-row">
+            <span className="chip">
+              {selectedCount} {selectedCount === 1 ? "slot selected" : "slots selected"}
+            </span>
+            {onSetSlotSelection ? <span className="chip">Drag to paint</span> : null}
+          </div>
+          {onSetSlotSelection && (onSelectAll || onClearAll) ? (
+            <div className="availability-bulk-actions">
+              {onSelectAll ? (
+                <button
+                  type="button"
+                  className="button-secondary availability-bulk-action"
+                  onClick={onSelectAll}
+                >
+                  Select all
+                </button>
+              ) : null}
+              {onClearAll ? (
+                <button
+                  type="button"
+                  className="button-secondary availability-bulk-action"
+                  onClick={onClearAll}
+                >
+                  Clear all
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="availability-scroll">
