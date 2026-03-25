@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { SlotCountBadge } from "./SlotCountBadge";
-
 export type AvailabilitySlot = {
   slot_id: string;
   local_date: string;
@@ -119,10 +117,7 @@ export function AvailabilityGrid({
           <p className="muted">
             {onSetSlotSelection
               ? "Click and drag across the timetable to add or remove 15-minute slots."
-              : "Read the OHBM 2026 Bordeaux timetable and see interest by day and time."}
-          </p>
-          <p className="muted">
-            Numbers in parentheses show how many requesters have already selected that slot.
+              : "Read the OHBM 2026 Bordeaux timetable by day and time."}
           </p>
         </div>
         <div className="chip-row">
@@ -214,14 +209,12 @@ function FragmentRow({
           >
             <div className="availability-cell-label">
               <span className="availability-cell-time">{formatTimeLabel(slot.local_start_time)}</span>
-              <SlotCountBadge count={slot.attendee_request_count} />
             </div>
           </button>
         ) : (
           <div key={slot.slot_id} aria-label={label} className={className}>
             <div className="availability-cell-label">
               <span className="availability-cell-time">{formatTimeLabel(slot.local_start_time)}</span>
-              <SlotCountBadge count={slot.attendee_request_count} />
             </div>
           </div>
         );

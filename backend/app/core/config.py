@@ -22,18 +22,8 @@ class Settings(BaseSettings):
     embedding_query_adapter_name: str = "allenai/specter2_adhoc_query"
     embedding_cache_dir: str = "/tmp/expert-match-model-cache"
     embedding_max_sequence_length: int = Field(default=512, ge=32, le=4096)
-    embedding_chunk_token_limit: int = Field(default=448, ge=16, le=4096)
+    embedding_chunk_token_limit: int = Field(default=510, ge=16, le=4096)
     embedding_chunk_token_overlap: int = Field(default=64, ge=0, le=1024)
-    email_sender: str = "noreply@example.com"
-    email_transport: str = "smtp"
-    outbox_dir: str = "/tmp/expert-match-outbox"
-    smtp_host: str | None = None
-    smtp_port: int = 25
-    smtp_username: str | None = None
-    smtp_password: str | None = None
-    smtp_use_tls: bool = False
-    smtp_use_ssl: bool = False
-    smtp_timeout_seconds: float = Field(default=20.0, gt=0.0, le=120.0)
     orcid_base_url: str = "https://pub.orcid.org/v3.0"
     orcid_live_validation: bool = True
     orcid_timeout_seconds: float = Field(default=20.0, gt=0.0, le=120.0)
@@ -42,6 +32,7 @@ class Settings(BaseSettings):
     openalex_email: str = "jamesdkent21@gmail.com"
     openalex_api_key: str | None = None
     openalex_timeout_seconds: float = Field(default=20.0, gt=0.0, le=120.0)
+    search_include_publication_abstracts: bool = True
     postgres_dsn: str | None = Field(
         default=None,
         validation_alias=AliasChoices("postgres_dsn", "POSTGRES_DSN", "APP_POSTGRES_DSN"),
