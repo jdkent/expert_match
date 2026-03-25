@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from uuid import uuid4
 
 from sqlalchemy import delete, select
@@ -17,6 +18,8 @@ from app.services.retrieval_service import RetrievalService
 
 
 class MatchingService:
+    TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+
     def __init__(
         self,
         *,
@@ -57,6 +60,11 @@ class MatchingService:
 
                 expert_best_matches: dict[str, dict] = {}
                 for profile, document, score in rows:
+                    if not self._passes_short_query_lexical_floor(
+                        query_text=payload.query_text,
+                        document_text=document.document_text,
+                    ):
+                        continue
                     existing = expert_best_matches.get(profile.id)
                     if existing is not None and existing["aggregate_similarity_score"] >= score:
                         continue
@@ -125,3 +133,14 @@ class MatchingService:
         if self.settings.search_include_publication_abstracts:
             allowed_source_types.append(SourceType.PUBLICATION_ABSTRACT.value)
         return allowed_source_types
+
+    def _passes_short_query_lexical_floor(self, *, query_text: str, document_text: str) -> bool:
+        query_tokens = self._normalized_tokens(query_text)
+        if len(query_tokens) > self.settings.short_query_token_limit:
+            return True
+        document_tokens = self._normalized_tokens(document_text)
+        return len(query_tokens & document_tokens) >= self.settings.short_query_lexical_overlap_floor
+
+    @classmethod
+    def _normalized_tokens(cls, text: str) -> set[str]:
+        return set(cls.TOKEN_PATTERN.findall(text.lower()))

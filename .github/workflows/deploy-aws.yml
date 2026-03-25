@@ -46,7 +46,7 @@ jobs:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -f backend/Dockerfile -t "${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}" .
+          docker build -f backend/Dockerfile --target production -t "${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}" .
           docker push "${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}"
           echo "BACKEND_IMAGE=${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}" >> "$GITHUB_ENV"
 
@@ -99,10 +99,19 @@ jobs:
                 \"printf '%s' '${RENEW_LE_B64}' | base64 -d >/opt/expert-match/renew-letsencrypt.sh\",
                 \"chmod +x /opt/expert-match/setup-letsencrypt.sh /opt/expert-match/renew-letsencrypt.sh\",
                 \"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com\",
+                \"df -h\",
+                \"docker system df || true\",
+                \"docker container prune -f\",
+                \"docker image prune -af\",
+                \"docker builder prune -af\",
+                \"docker system df || true\",
                 \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env pull\",
                 \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env run --rm backend alembic upgrade head\",
                 \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env run --rm backend python -m app.scripts.run_backfills\",
-                \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env up -d\"
+                \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env up -d\",
+                \"docker image prune -af\",
+                \"docker builder prune -af\",
+                \"docker system df || true\"
               ]" \
               --query "Command.CommandId" \
               --output text

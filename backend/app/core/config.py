@@ -3,7 +3,9 @@ from functools import lru_cache
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_SIMILARITY_THRESHOLD = 0.2
+DEFAULT_SIMILARITY_THRESHOLD = 0.3
+DEFAULT_SHORT_QUERY_TOKEN_LIMIT = 3
+DEFAULT_SHORT_QUERY_LEXICAL_OVERLAP_FLOOR = 1
 LEGACY_EMBEDDING_MODEL_NAME = "allenai/specter2"
 DEFAULT_EMBEDDING_PROVIDER = "sentence-transformers"
 DEFAULT_EMBEDDING_MODEL_NAME = "sentence-transformers/all-mpnet-base-v2"
@@ -23,6 +25,8 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
     similarity_threshold: float = Field(default=DEFAULT_SIMILARITY_THRESHOLD, ge=0.0, le=1.0)
+    short_query_token_limit: int = Field(default=DEFAULT_SHORT_QUERY_TOKEN_LIMIT, ge=1, le=32)
+    short_query_lexical_overlap_floor: int = Field(default=DEFAULT_SHORT_QUERY_LEXICAL_OVERLAP_FLOOR, ge=1, le=8)
     embedding_dimension: int = Field(default=DEFAULT_EMBEDDING_DIMENSION, ge=8, le=2048)
     embedding_provider: str = DEFAULT_EMBEDDING_PROVIDER
     embedding_model_name: str = DEFAULT_EMBEDDING_MODEL_NAME
