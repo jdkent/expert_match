@@ -230,7 +230,7 @@ export function OutreachComposer({ latestQuery, selectedExperts }: Props) {
       ) : (
         <div className="result-card">
           <p className="muted">
-            Select one expert  to unlock the draft.
+            Select one expert to unlock the draft.
           </p>
         </div>
       )}

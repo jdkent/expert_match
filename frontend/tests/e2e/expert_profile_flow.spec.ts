@@ -11,5 +11,12 @@ test("expert profile submission and access-key management flow", async ({ page }
   ]);
   await expect(page.getByText(/Save your expert access key/i)).toBeVisible();
   await expect(page.getByText("Copy access key")).toBeVisible();
+  await expect(page.getByText("Edit profile now")).toBeVisible();
   await expect(page.getByText("Return to search")).toBeVisible();
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes("/api/v1/expert-access/profile")),
+    page.getByText("Edit profile now").click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Edit profile" })).toBeVisible();
+  await expect(page.getByDisplayValue("Ada Lovelace")).toBeVisible();
 });

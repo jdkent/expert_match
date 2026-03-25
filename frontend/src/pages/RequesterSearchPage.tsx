@@ -44,7 +44,7 @@ export function RequesterSearchPage() {
           <p className="eyebrow">Search results</p>
           <h2>Results for “{latestQuery}”</h2>
           <p className="muted">
-            Review up to five distinct experts, select the people you want to contact,
+            Review up to five distinct experts, select the single person you want to contact,
             and then generate a draft you can paste into your own email client.
           </p>
         </div>

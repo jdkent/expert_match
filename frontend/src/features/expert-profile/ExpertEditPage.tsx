@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { AvailabilityGrid } from "../availability/AvailabilityGrid";
 import { DeleteProfileDialog } from "./DeleteProfileDialog";
@@ -8,8 +8,18 @@ import { expertProfilesApi } from "../../services/expertProfiles";
 
 export function ExpertEditPage() {
   const navigate = useNavigate();
-  const [accessKey, setAccessKey] = useState("");
-  const [submittedAccessKey, setSubmittedAccessKey] = useState<string | null>(null);
+  const location = useLocation();
+  const preloadedAccessKey =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "accessKey" in location.state &&
+    typeof location.state.accessKey === "string"
+      ? location.state.accessKey.trim()
+      : "";
+  const [accessKey, setAccessKey] = useState(preloadedAccessKey);
+  const [submittedAccessKey, setSubmittedAccessKey] = useState<string | null>(
+    preloadedAccessKey || null,
+  );
   const { data, error, refetch } = useQuery({
     queryKey: ["expert-edit", submittedAccessKey],
     queryFn: () => expertProfilesApi.getProfileForAccessKey(submittedAccessKey!),

@@ -25,6 +25,77 @@ async function copyText(value: string) {
   await navigator.clipboard.writeText(value);
 }
 
+function formatMutationError(error: unknown, fallback: string) {
+  if (!(error instanceof Error) || !error.message) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(error.message) as { detail?: string };
+    if (typeof parsed.detail === "string" && parsed.detail.trim().length > 0) {
+      return parsed.detail;
+    }
+  } catch {
+    // Fall through to the raw message when the response is not JSON.
+  }
+
+  return error.message;
+}
+
+const profileFields: Array<{
+  key: keyof typeof emptyForm;
+  label: string;
+  type?: "email" | "url" | "text";
+  placeholder?: string;
+  hint?: string;
+}> = [
+  {
+    key: "full_name",
+    label: "Full name",
+    placeholder: "Ada Lovelace",
+  },
+  {
+    key: "email",
+    label: "Email",
+    type: "email",
+    placeholder: "ada@example.org",
+  },
+  {
+    key: "orcid_id",
+    label: "ORCID ID",
+    placeholder: "0000-0002-1825-0097",
+    hint: "Optional. Paste the ORCID iD only; the full URL is not required.",
+  },
+  {
+    key: "website_url",
+    label: "Website",
+    type: "url",
+    placeholder: "https://yourlab.org",
+  },
+  {
+    key: "x_handle",
+    label: "X handle",
+    placeholder: "@yourhandle or https://x.com/yourhandle",
+    hint: "Handles and full profile URLs both work.",
+  },
+  {
+    key: "linkedin_identifier",
+    label: "LinkedIn",
+    placeholder: "your-name or linkedin.com/in/your-name",
+    hint: "Use your LinkedIn slug or the full profile URL.",
+  },
+  {
+    key: "bluesky_identifier",
+    label: "Bluesky",
+    placeholder: "yourname.bsky.social",
+  },
+  {
+    key: "github_handle",
+    label: "GitHub",
+    placeholder: "yourhandle or github.com/yourhandle",
+  },
+];
+
 export function ExpertProfileForm({ onCreated }: Props) {
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
@@ -37,10 +108,14 @@ export function ExpertProfileForm({ onCreated }: Props) {
     accessKey: string;
   } | null>(null);
   const [copyState, setCopyState] = useState("");
+  const [formError, setFormError] = useState("");
 
   const createMutation = useMutation({
     mutationFn: async () => {
       const expertise_entries = expertiseEntries.map((entry) => entry.trim()).filter(Boolean);
+      if (expertise_entries.length === 0) {
+        throw new Error("Add at least one expertise entry before submitting your profile.");
+      }
       return expertProfilesApi.createProfile({
         ...form,
         orcid_id: form.orcid_id || null,
@@ -56,7 +131,11 @@ export function ExpertProfileForm({ onCreated }: Props) {
     onSuccess: (data) => {
       setCreatedProfile({ email: form.email, accessKey: data.access_key });
       setCopyState("");
+      setFormError("");
       onCreated(form.email);
+    },
+    onError: (error) => {
+      setFormError(formatMutationError(error, "Could not submit profile. Check the form and try again."));
     },
   });
 
@@ -68,54 +147,58 @@ export function ExpertProfileForm({ onCreated }: Props) {
           No account required. Add in as many areas of expertise and contact links as you'd like,
           then save the expert access key shown after submission to unlock future edits.
         </p>
+        <p className="muted">
+          For social profiles, you can paste either a handle or a full profile URL.
+        </p>
       </div>
       <div className="form-grid">
-        {[
-          ["full_name", "Full name"],
-          ["email", "Email"],
-          ["orcid_id", "ORCID ID"],
-          ["website_url", "Website"],
-          ["x_handle", "X handle"],
-          ["linkedin_identifier", "LinkedIn"],
-          ["bluesky_identifier", "Bluesky"],
-          ["github_handle", "GitHub"],
-        ].map(([key, label]) => (
+        {profileFields.map(({ key, label, placeholder, type = "text", hint }) => (
           <label key={key} className="field">
             <span>{label}</span>
             <input
               name={key}
+              type={type}
+              placeholder={placeholder}
               value={form[key as keyof typeof form]}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, [key]: event.target.value }))
-              }
+              onChange={(event) => {
+                setFormError("");
+                setForm((current) => ({ ...current, [key]: event.target.value }));
+              }}
             />
+            {hint ? <span className="field-hint">{hint}</span> : null}
           </label>
         ))}
         <div className="field">
           <span>Expertise entries</span>
+          <span className="field-hint">
+            Add one short area of expertise per row so requesters can find you.
+          </span>
           <div className="expertise-rows">
             {expertiseEntries.map((entry, index) => (
               <div key={`expertise-entry-${index}`} className="expertise-row">
                 <input
                   aria-label={`Expertise entry ${index + 1}`}
+                  placeholder="Cognitive neuroscience methods"
                   value={entry}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setFormError("");
                     setExpertiseEntries((current) =>
                       current.map((candidate, candidateIndex) =>
                         candidateIndex === index ? event.target.value : candidate,
                       ),
-                    )
-                  }
+                    );
+                  }}
                 />
                 {expertiseEntries.length > 1 ? (
                   <button
                     type="button"
                     className="button-secondary expertise-remove"
-                    onClick={() =>
+                    onClick={() => {
+                      setFormError("");
                       setExpertiseEntries((current) =>
                         current.filter((_, candidateIndex) => candidateIndex !== index),
-                      )
-                    }
+                      );
+                    }}
                   >
                     Remove
                   </button>
@@ -127,7 +210,10 @@ export function ExpertProfileForm({ onCreated }: Props) {
             <button
               type="button"
               className="button-secondary"
-              onClick={() => setExpertiseEntries((current) => [...current, ""])}
+              onClick={() => {
+                setFormError("");
+                setExpertiseEntries((current) => [...current, ""]);
+              }}
             >
               Add another expertise
             </button>
@@ -162,11 +248,15 @@ export function ExpertProfileForm({ onCreated }: Props) {
         />
       </div>
       <div className="button-row">
-        <button className="button-primary" onClick={() => createMutation.mutate()}>
-          Submit profile
+        <button
+          className="button-primary"
+          onClick={() => createMutation.mutate()}
+          disabled={createMutation.isPending}
+        >
+          {createMutation.isPending ? "Submitting..." : "Submit profile"}
         </button>
       </div>
-      {createMutation.error ? <div>{String(createMutation.error)}</div> : null}
+      {formError ? <div className="token">{formError}</div> : null}
       {createdProfile ? (
         <div className="dialog-backdrop" role="presentation">
           <div
@@ -196,6 +286,14 @@ export function ExpertProfileForm({ onCreated }: Props) {
               </button>
               <button
                 className="button-primary"
+                onClick={() =>
+                  navigate("/experts/manage", { state: { accessKey: createdProfile.accessKey } })
+                }
+              >
+                Edit profile now
+              </button>
+              <button
+                className="button-secondary"
                 onClick={() => navigate("/")}
               >
                 Return to search

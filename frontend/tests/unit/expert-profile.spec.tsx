@@ -35,6 +35,7 @@ describe("ExpertProfileForm", () => {
     });
     expect(screen.getByText("expert-access-key")).toBeInTheDocument();
     expect(screen.getByText("Copy access key")).toBeInTheDocument();
+    expect(screen.getByText("Edit profile now")).toBeInTheDocument();
     expect(screen.getByText("Return to search")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/experts",
@@ -49,5 +50,19 @@ describe("ExpertProfileForm", () => {
 
     expect(screen.getByLabelText("Expertise entry 1")).toBeInTheDocument();
     expect(screen.getByLabelText("Expertise entry 2")).toBeInTheDocument();
+  });
+
+  it("shows a clear validation message when all expertise entries are blank", async () => {
+    renderWithProviders(<ExpertProfileForm onCreated={() => undefined} />);
+
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Ada Lovelace" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ada@example.org" } });
+    fireEvent.click(screen.getByText("Submit profile"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Add at least one expertise entry before submitting your profile."),
+      ).toBeInTheDocument();
+    });
   });
 });
