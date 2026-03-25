@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 from uuid import uuid4
 
 from sqlalchemy import delete
@@ -38,7 +37,6 @@ class ExpertMatchCandidate:
 
 
 class MatchingService:
-    TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
     MAX_MATCHES = 5
 
     def __init__(
@@ -86,7 +84,6 @@ class MatchingService:
                 )
 
                 ranked = self._rank_candidates(
-                    query_text=payload.query_text,
                     lexical_rows=lexical_rows,
                     semantic_rows=semantic_rows,
                 )
@@ -134,19 +131,16 @@ class MatchingService:
     def _rank_candidates(
         self,
         *,
-        query_text: str,
         lexical_rows: list[RankedDocument],
         semantic_rows: list[RankedDocument],
     ) -> list[dict]:
         candidates: dict[str, ExpertMatchCandidate] = {}
         self._apply_ranked_rows(
-            query_text=query_text,
             ranked_rows=lexical_rows,
             candidates=candidates,
             modality="lexical",
         )
         self._apply_ranked_rows(
-            query_text=query_text,
             ranked_rows=semantic_rows,
             candidates=candidates,
             modality="semantic",
@@ -204,17 +198,11 @@ class MatchingService:
     def _apply_ranked_rows(
         self,
         *,
-        query_text: str,
         ranked_rows: list[RankedDocument],
         candidates: dict[str, ExpertMatchCandidate],
         modality: str,
     ) -> None:
         for rank, ranked_document in enumerate(ranked_rows, start=1):
-            if not self._passes_short_query_lexical_floor(
-                query_text=query_text,
-                document_text=ranked_document.document.document_text,
-            ):
-                continue
             candidate = candidates.setdefault(
                 ranked_document.profile.id,
                 ExpertMatchCandidate(profile=ranked_document.profile),
@@ -264,14 +252,3 @@ class MatchingService:
         if self.settings.search_include_publication_abstracts:
             allowed_source_types.append(SourceType.PUBLICATION_ABSTRACT.value)
         return allowed_source_types
-
-    def _passes_short_query_lexical_floor(self, *, query_text: str, document_text: str) -> bool:
-        query_tokens = self._normalized_tokens(query_text)
-        if len(query_tokens) > self.settings.short_query_token_limit:
-            return True
-        document_tokens = self._normalized_tokens(document_text)
-        return len(query_tokens & document_tokens) >= self.settings.short_query_lexical_overlap_floor
-
-    @classmethod
-    def _normalized_tokens(cls, text: str) -> set[str]:
-        return set(cls.TOKEN_PATTERN.findall(text.lower()))

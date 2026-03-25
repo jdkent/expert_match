@@ -45,42 +45,7 @@ def test_matching_service_can_disable_publication_abstract_search():
     assert service._allowed_source_types() == ["manual_expertise", "short_bio"]
 
 
-def test_short_query_requires_lexical_overlap():
-    service = MatchingService(
-        session_factory=Mock(),
-        settings=Settings(POSTGRES_DSN="postgresql+psycopg://example"),
-        embedding_service=Mock(),
-        retrieval_service=Mock(),
-    )
-
-    assert service._passes_short_query_lexical_floor(query_text="socks", document_text="github workflows") is False
-    assert (
-        service._passes_short_query_lexical_floor(
-            query_text="meta-analysis",
-            document_text="fmri analysis workflows",
-        )
-        is True
-    )
-
-
-def test_long_query_does_not_require_lexical_overlap():
-    service = MatchingService(
-        session_factory=Mock(),
-        settings=Settings(POSTGRES_DSN="postgresql+psycopg://example"),
-        embedding_service=Mock(),
-        retrieval_service=Mock(),
-    )
-
-    assert (
-        service._passes_short_query_lexical_floor(
-            query_text="I need someone who understands neuroimaging evidence synthesis methods",
-            document_text="coordinate based meta-analysis workflows",
-        )
-        is True
-    )
-
-
-def test_matching_service_filters_short_query_matches_without_lexical_overlap():
+def test_matching_service_rejects_semantic_only_rank_one_match_at_default_threshold():
     session_factory = MagicMock()
     session = session_factory.return_value.__enter__.return_value
     session_factory.return_value = session
