@@ -189,7 +189,7 @@ class RetrievalService:
     def _text_search_parts(query_text: str):
         document_text = func.coalesce(ExpertSearchDocument.document_text, "")
         document_tsvector = func.to_tsvector("english", document_text)
-        tsquery = func.websearch_to_tsquery("english", query_text)
+        tsquery = func.websearch_to_tsquery("english", RetrievalService._fts_or_query_text(query_text))
         return document_text, document_tsvector, tsquery
 
     @staticmethod
@@ -215,3 +215,10 @@ class RetrievalService:
     @classmethod
     def _normalized_tokens(cls, text: str) -> set[str]:
         return set(cls.TOKEN_PATTERN.findall(text.lower()))
+
+    @classmethod
+    def _fts_or_query_text(cls, query_text: str) -> str:
+        tokens = sorted(cls._normalized_tokens(query_text))
+        if not tokens:
+            return query_text
+        return " OR ".join(tokens)

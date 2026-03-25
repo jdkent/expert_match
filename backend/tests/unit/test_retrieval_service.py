@@ -200,8 +200,10 @@ def test_rank_lexical_documents_ranks_full_text_matches_first(session_factory):
             limit=10,
         )
 
-    assert len(rows) == 1
+    assert len(rows) == 2
     assert rows[0].profile.full_name == "Ada Lovelace"
+    assert rows[1].profile.full_name == "Grace Hopper"
+    assert rows[0].score > rows[1].score
     assert rows[0].score > 0
 
 
@@ -241,4 +243,43 @@ def test_rank_lexical_documents_uses_trigram_fallback_for_typos(session_factory)
 
     assert len(rows) == 1
     assert rows[0].profile.full_name == "Ada Lovelace"
+    assert rows[0].score > 0
+
+
+def test_rank_lexical_documents_can_match_partial_overlap_query_terms(session_factory):
+    retrieval_service = RetrievalService()
+    with session_factory() as session:
+        profile = ExpertProfile(
+            id=str(uuid4()),
+            full_name="BIDS Expert",
+            email="bids@example.org",
+            discoverability_status=DiscoverabilityStatus.ACTIVE.value,
+            access_key_hash="dummy-bids",
+        )
+        session.add(profile)
+        session.flush()
+        session.add(
+            ExpertSearchDocument(
+                id=str(uuid4()),
+                expert_profile_id=profile.id,
+                source_type=SourceType.MANUAL_EXPERTISE.value,
+                source_record_id=str(uuid4()),
+                document_text="BIDS",
+                embedding_vector=_vector(1.0),
+                embedding_model="test-model",
+                is_active=True,
+            )
+        )
+        session.commit()
+
+    with session_factory() as session:
+        rows = retrieval_service.rank_lexical_documents(
+            session=session,
+            query_text="How do I organize my data into BIDS?",
+            allowed_source_types=[SourceType.MANUAL_EXPERTISE.value],
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    assert rows[0].profile.full_name == "BIDS Expert"
     assert rows[0].score > 0
