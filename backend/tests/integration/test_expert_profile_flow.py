@@ -24,6 +24,7 @@ def test_expert_submission_access_key_edit_and_deletion_flow(client):
     )
     assert create_response.status_code == 202
     access_key = create_response.json()["access_key"]
+    client.app.state.services["expert_profile"].wait_for_idle(timeout=120)
 
     profile_response = client.post(
         "/api/v1/expert-access/profile",
@@ -44,6 +45,7 @@ def test_expert_submission_access_key_edit_and_deletion_flow(client):
         },
     )
     assert patch_response.status_code == 202
+    client.app.state.services["expert_profile"].wait_for_idle(timeout=120)
 
     updated_profile = client.post(
         "/api/v1/expert-access/profile",
@@ -78,6 +80,7 @@ def test_duplicate_submission_requires_existing_access_key(client):
         },
     )
     first_profile_id = first_response.json()["profile_id"]
+    client.app.state.services["expert_profile"].wait_for_idle(timeout=120)
     second_response = client.post(
         "/api/v1/experts",
         json={

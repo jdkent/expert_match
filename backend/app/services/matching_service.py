@@ -10,6 +10,7 @@ from app.models.enums import DiscoverabilityStatus, SearchStatus
 from app.models.expert_profile import ExpertProfile
 from app.models.expert_query import ExpertQuery, MatchResult
 from app.models.publication_record import ExpertSearchDocument
+from app.models.enums import SourceType
 from app.schemas.matching import MatchQueryInput
 from app.services.embedding_service import EmbeddingService
 from app.services.retrieval_service import RetrievalService
@@ -50,6 +51,7 @@ class MatchingService:
                     session=session,
                     query_vector=query_vector,
                     similarity_threshold=self.settings.similarity_threshold,
+                    allowed_source_types=self._allowed_source_types(),
                 )
 
                 expert_best_matches: dict[str, dict] = {}
@@ -116,3 +118,9 @@ class MatchingService:
                 for match in ranked
             ],
         }
+
+    def _allowed_source_types(self) -> list[str]:
+        allowed_source_types = [SourceType.MANUAL_EXPERTISE.value]
+        if self.settings.search_include_publication_abstracts:
+            allowed_source_types.append(SourceType.PUBLICATION_ABSTRACT.value)
+        return allowed_source_types

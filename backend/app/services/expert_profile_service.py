@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import secrets
+from concurrent.futures import Future, ThreadPoolExecutor, wait
+from threading import Lock
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -36,6 +38,7 @@ class ExpertProfileService:
         availability_service: AvailabilityService,
         orcid_client: OrcidClient,
         openalex_client: OpenAlexClient,
+        enrichment_executor: ThreadPoolExecutor | None = None,
     ) -> None:
         self.session_factory = session_factory
         self.settings = settings
@@ -43,11 +46,23 @@ class ExpertProfileService:
         self.availability_service = availability_service
         self.orcid_client = orcid_client
         self.openalex_client = openalex_client
+        self.enrichment_executor = enrichment_executor or ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="expert-enrichment",
+        )
+        self._executor_owned = enrichment_executor is None
+        self._enrichment_futures: set[Future[None]] = set()
+        self._futures_lock = Lock()
 
     def create_profile(self, payload: ExpertProfileInput) -> dict:
         normalized_email = normalize_email(str(payload.email))
         self._validate_orcid(payload.orcid_id)
         access_key = self._new_token()
+        selected_slot_ids = (
+            [str(slot_id) for slot_id in payload.available_slot_ids]
+            if payload.available_slot_ids is not None
+            else None
+        )
         with self.session_factory() as session:
             try:
                 profile = session.scalar(
@@ -92,24 +107,19 @@ class ExpertProfileService:
                     profile.deleted_at = None
                     profile.updated_at = utcnow()
                 self._replace_expertise_entries(session, profile.id, payload.expertise_entries)
-                selected_slot_ids = (
-                    [str(slot_id) for slot_id in payload.available_slot_ids]
-                    if payload.available_slot_ids is not None
-                    else None
-                )
-                self.refresh_search_documents(
-                    session,
-                    profile=profile,
-                    trigger_source=EnrichmentTriggerSource.INITIAL_SUBMISSION.value,
-                    available_slot_ids=selected_slot_ids,
-                )
-                profile.discoverability_status = DiscoverabilityStatus.ACTIVE.value
+                self.availability_service.replace_for_profile(profile.id, selected_slot_ids, session=session)
                 profile.updated_at = utcnow()
                 profile_id = profile.id
                 session.commit()
             except Exception:
                 session.rollback()
                 raise
+        self.enqueue_search_refresh(
+            profile_id=profile_id,
+            trigger_source=EnrichmentTriggerSource.INITIAL_SUBMISSION.value,
+            available_slot_ids=selected_slot_ids,
+            activate_on_completion=True,
+        )
         return {"profile_id": profile_id, "access_key": access_key}
 
     def get_profile_for_access_key(self, access_key: str) -> dict:
@@ -146,19 +156,24 @@ class ExpertProfileService:
                     if "available_slot_ids" in payload.model_fields_set
                     else self._selected_slot_ids(session, profile.id)
                 )
-                self.refresh_search_documents(
-                    session,
-                    profile=profile,
-                    trigger_source=EnrichmentTriggerSource.EXPERT_EDIT.value,
-                    available_slot_ids=selected_slot_ids if selected_slot_ids else None,
+                self.availability_service.replace_for_profile(
+                    profile.id,
+                    selected_slot_ids if selected_slot_ids else None,
+                    session=session,
                 )
-                profile.discoverability_status = DiscoverabilityStatus.ACTIVE.value
                 profile.updated_at = utcnow()
+                profile_id = profile.id
                 session.commit()
-                return {"profile_id": profile.id, "status": "updated"}
             except Exception:
                 session.rollback()
                 raise
+        self.enqueue_search_refresh(
+            profile_id=profile_id,
+            trigger_source=EnrichmentTriggerSource.EXPERT_EDIT.value,
+            available_slot_ids=selected_slot_ids if selected_slot_ids else None,
+            activate_on_completion=False,
+        )
+        return {"profile_id": profile_id, "status": "updated"}
 
     def delete_profile(self, access_key: str, email_confirmation: str) -> dict:
         with self.session_factory() as session:
@@ -268,6 +283,69 @@ class ExpertProfileService:
             run.status = EnrichmentStatus.FAILED.value
             run.last_error = str(exc)
             raise
+
+    def enqueue_search_refresh(
+        self,
+        *,
+        profile_id: str,
+        trigger_source: str,
+        available_slot_ids: list[str | object] | None,
+        activate_on_completion: bool,
+    ) -> None:
+        future = self.enrichment_executor.submit(
+            self._run_search_refresh,
+            profile_id=profile_id,
+            trigger_source=trigger_source,
+            available_slot_ids=available_slot_ids,
+            activate_on_completion=activate_on_completion,
+        )
+        with self._futures_lock:
+            self._enrichment_futures.add(future)
+        future.add_done_callback(self._cleanup_enrichment_future)
+
+    def wait_for_idle(self, timeout: float | None = None) -> None:
+        with self._futures_lock:
+            futures = list(self._enrichment_futures)
+        if not futures:
+            return
+        _, not_done = wait(futures, timeout=timeout)
+        if not_done:
+            raise TimeoutError("Timed out waiting for expert enrichment to finish")
+
+    def shutdown(self) -> None:
+        if self._executor_owned:
+            self.enrichment_executor.shutdown(wait=True, cancel_futures=False)
+
+    def _run_search_refresh(
+        self,
+        *,
+        profile_id: str,
+        trigger_source: str,
+        available_slot_ids: list[str | object] | None,
+        activate_on_completion: bool,
+    ) -> None:
+        with self.session_factory() as session:
+            try:
+                profile = session.get(ExpertProfile, profile_id)
+                if profile is None or profile.deleted_at is not None:
+                    return
+                self.refresh_search_documents(
+                    session,
+                    profile=profile,
+                    trigger_source=trigger_source,
+                    available_slot_ids=available_slot_ids,
+                )
+                if activate_on_completion:
+                    profile.discoverability_status = DiscoverabilityStatus.ACTIVE.value
+                profile.updated_at = utcnow()
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    def _cleanup_enrichment_future(self, future: Future[None]) -> None:
+        with self._futures_lock:
+            self._enrichment_futures.discard(future)
 
     def _serialize_profile(self, session: Session, profile: ExpertProfile) -> dict:
         expertise_entries = session.scalars(

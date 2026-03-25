@@ -24,6 +24,16 @@ def test_specter2_query_and_document_embeddings_are_normalized():
     assert service.document_embedding_label().endswith("allenai/specter2")
 
 
+def test_specter2_defaults_use_full_model_window():
+    settings = get_settings()
+    service = EmbeddingService(settings)
+
+    assert settings.embedding_max_sequence_length == 512
+    assert settings.embedding_chunk_token_limit == 510
+    assert service.max_sequence_length == 512
+    assert service.chunk_token_limit == 510
+
+
 def test_specter2_long_text_embedding_matches_manual_chunk_average():
     settings = Settings(
         embedding_provider="specter2",

@@ -4,7 +4,7 @@ from datetime import date
 from uuid import uuid4
 
 from pgvector.sqlalchemy import VECTOR
-from sqlalchemy import Boolean, Date, Index, String, Text
+from sqlalchemy import Boolean, Date, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -38,6 +38,14 @@ class ExpertSearchDocument(Base):
             postgresql_using="hnsw",
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding_vector": "vector_cosine_ops"},
+        ),
+        Index(
+            "ix_expert_search_documents_manual_embedding_vector_hnsw",
+            "embedding_vector",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding_vector": "vector_cosine_ops"},
+            postgresql_where=text("source_type = 'manual_expertise' AND is_active = true"),
         ),
     )
 

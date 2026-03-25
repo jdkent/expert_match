@@ -3,7 +3,7 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import close_all_sessions, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from app.core.config import get_settings
 from app.db.base import Base
@@ -20,7 +20,6 @@ def engine():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     yield engine
-    close_all_sessions()
     Base.metadata.drop_all(engine)
     engine.dispose()
 
@@ -32,7 +31,6 @@ def db_connection(engine) -> Iterator:
     try:
         yield connection
     finally:
-        close_all_sessions()
         transaction.rollback()
         connection.close()
 
@@ -45,9 +43,10 @@ def session_factory(db_connection) -> Iterator[sessionmaker]:
 @pytest.fixture
 def client(session_factory) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
-        for service_name in ("availability", "expert_profile", "matching", "outreach"):
+        for service_name in ("availability", "expert_profile", "matching"):
             app.state.services[service_name].session_factory = session_factory
         yield test_client
+        app.state.services["expert_profile"].wait_for_idle(timeout=120)
 
 
 @pytest.fixture

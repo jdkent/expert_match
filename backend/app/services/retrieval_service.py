@@ -24,6 +24,7 @@ class RetrievalService:
         session: Session,
         query_vector: list[float],
         similarity_threshold: float,
+        allowed_source_types: list[str],
     ) -> list[tuple[ExpertProfile, ExpertSearchDocument, float]]:
         if session.bind is None or session.bind.dialect.name != "postgresql":
             raise RuntimeError("RetrievalService requires PostgreSQL with pgvector")
@@ -31,9 +32,10 @@ class RetrievalService:
             session=session,
             query_vector=query_vector,
             similarity_threshold=similarity_threshold,
+            allowed_source_types=allowed_source_types,
         )
 
-    def _base_statement(self):
+    def _base_statement(self, *, allowed_source_types: list[str]):
         return select(ExpertProfile, ExpertSearchDocument).join(
             ExpertSearchDocument,
             ExpertSearchDocument.expert_profile_id == ExpertProfile.id,
@@ -41,6 +43,7 @@ class RetrievalService:
             ExpertProfile.discoverability_status == DiscoverabilityStatus.ACTIVE.value,
             ExpertProfile.deleted_at.is_(None),
             ExpertSearchDocument.is_active.is_(True),
+            ExpertSearchDocument.source_type.in_(allowed_source_types),
         )
 
     def _rank_documents_postgres(
@@ -49,10 +52,11 @@ class RetrievalService:
         session: Session,
         query_vector: list[float],
         similarity_threshold: float,
+        allowed_source_types: list[str],
     ) -> list[tuple[ExpertProfile, ExpertSearchDocument, float]]:
         distance = ExpertSearchDocument.embedding_vector.cosine_distance(query_vector)
         rows = session.execute(
-            self._base_statement()
+            self._base_statement(allowed_source_types=allowed_source_types)
             .add_columns(distance.label("distance"))
             .where(distance <= 1 - similarity_threshold)
             .order_by(distance.asc())

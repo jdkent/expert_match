@@ -41,6 +41,7 @@ def test_profile_creation_creates_slots_and_search_documents(session_factory):
             expertise_entries=["Metadata workflows"],
         )
     )
+    service.wait_for_idle(timeout=120)
     with session_factory() as session:
         profile = session.get(ExpertProfile, accepted["profile_id"])
         assert profile.discoverability_status == "active"
@@ -66,10 +67,12 @@ def test_access_key_unlocks_profile_updates(session_factory):
             expertise_entries=["Metadata workflows"],
         )
     )
+    service.wait_for_idle(timeout=30)
     profile = service.get_profile_for_access_key(accepted["access_key"])
     assert profile["email"] == "ada@example.org"
     updated = service.update_profile(
         accepted["access_key"],
         ExpertProfileEditInput(expertise_entries=["Metadata workflows", "ORCID support"]),
     )
+    service.wait_for_idle(timeout=30)
     assert updated["status"] == "updated"

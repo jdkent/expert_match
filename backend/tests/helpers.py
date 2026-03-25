@@ -21,4 +21,5 @@ def create_expert(
         },
     )
     assert response.status_code == 202
+    client.app.state.services["expert_profile"].wait_for_idle(timeout=120)
     return response.json()
