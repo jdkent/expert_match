@@ -63,10 +63,10 @@ export function ExpertProfileForm({ onCreated }: Props) {
   return (
     <section className="panel stack">
       <div>
-        <h2>Publish your profile</h2>
+        <h2>Profile Information</h2>
         <p className="muted">
-          No account required. Add one short expertise topic per row. The same
-          form and API routes work in local development and behind production ingress.
+          No account required. Add in as many areas of expertise and contact links as you'd like,
+          then save the expert access key shown after submission to unlock future edits.
         </p>
       </div>
       <div className="form-grid">
@@ -138,7 +138,7 @@ export function ExpertProfileForm({ onCreated }: Props) {
         <div>
           <h3>Optional event availability</h3>
           <p className="muted">
-            Leave everything unchecked to use the default of all Bordeaux event slots.
+            By default all time slots are available.
           </p>
         </div>
         <AvailabilityGrid

@@ -87,12 +87,39 @@ button {
   margin: 0 auto;
 }
 
+.site-footer {
+  margin-top: 1.4rem;
+  padding: 0.95rem 1rem 1.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.site-footer-text {
+  margin: 0;
+}
+
+.site-footer-link {
+  color: var(--ink);
+  text-decoration-color: rgba(242, 140, 40, 0.5);
+  text-underline-offset: 0.16rem;
+}
+
+.site-footer-link:hover {
+  text-decoration-color: var(--accent);
+}
+
 .topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.1rem;
+}
+
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 .brand-link {
@@ -357,6 +384,31 @@ button {
   display: grid;
   gap: 1rem;
   max-width: 54rem;
+}
+
+.expert-access-card {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.5fr) minmax(15rem, 0.9fr);
+  align-items: center;
+  background:
+    radial-gradient(circle at top left, rgba(47, 208, 231, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+}
+
+.expert-access-actions {
+  display: grid;
+  gap: 0.8rem;
+  justify-items: start;
+}
+
+.expert-access-button {
+  min-width: 14rem;
+}
+
+.expert-access-note {
+  margin: 0;
+  max-width: 28ch;
 }
 
 .matched-expert-panel {
@@ -792,6 +844,11 @@ button {
     justify-content: flex-start;
   }
 
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .topbar {
     align-items: flex-start;
   }
@@ -802,6 +859,19 @@ button {
 
   .draft-meta {
     grid-template-columns: 1fr;
+  }
+
+  .expert-access-card {
+    grid-template-columns: 1fr;
+  }
+
+  .expert-access-button {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .expert-access-note {
+    max-width: none;
   }
 }
 

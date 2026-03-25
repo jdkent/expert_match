@@ -4,9 +4,10 @@ import { ExpertProfilePage } from "../pages/ExpertProfilePage";
 import { RequesterSearchPage } from "../pages/RequesterSearchPage";
 import { ExpertEditPage } from "../features/expert-profile/ExpertEditPage";
 
-function Layout() {
+export function Layout() {
   const location = useLocation();
   const onExpertRoute = location.pathname.startsWith("/experts");
+  const onExpertManageRoute = location.pathname.startsWith("/experts/manage");
 
   return (
     <main className="layout">
@@ -27,11 +28,33 @@ function Layout() {
               alt="OSSIG"
             />
           </a>
-          <NavLink className="topbar-action" to={onExpertRoute ? "/" : "/experts"}>
-            {onExpertRoute ? "Back to search" : "Experts: add yourself"}
-          </NavLink>
+          <div className="topbar-actions">
+            {onExpertManageRoute ? (
+              <>
+                <NavLink className="topbar-action" to="/experts">
+                  Back to expert page
+                </NavLink>
+                <NavLink className="topbar-action" to="/">
+                  Back to search
+                </NavLink>
+              </>
+            ) : (
+              <NavLink className="topbar-action" to={onExpertRoute ? "/" : "/experts"}>
+                {onExpertRoute ? "Back to search" : "Experts: add yourself"}
+              </NavLink>
+            )}
+          </div>
         </header>
         <Outlet />
+        <footer className="site-footer">
+          <p className="muted site-footer-text">
+            Questions or feedback? Contact{" "}
+            <a className="site-footer-link" href="mailto:jamesdkent21@gmail.com">
+              jamesdkent21@gmail.com
+            </a>
+            .
+          </p>
+        </footer>
       </div>
     </main>
   );

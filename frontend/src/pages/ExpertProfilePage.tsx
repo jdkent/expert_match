@@ -12,12 +12,13 @@ export function ExpertProfilePage() {
     <div className="expert-stack">
       <section className="panel panel-callout">
         <p className="eyebrow">For experts</p>
-        <h1>Publish your profile for Bordeaux 2026.</h1>
+        <h1>Publish your profile for OHBM Bordeaux 2026.</h1>
         <p className="muted">
-          Share your expertise once, update it later with your access key, and stay visible for
-          OHBM 2026 Bordeaux requests without creating an account.
+          Share your contact information and expertise, and get connected with
+          people who have questions in your area of expertise.
         </p>
       </section>
+      <ExpertEditRecoveryForm />
       <ExpertProfileForm
         onCreated={(email) =>
           setMessage(`Profile created for ${email}. Save the expert access key shown below before leaving this page.`)
@@ -26,12 +27,7 @@ export function ExpertProfilePage() {
       <section className="panel panel-tight">
         <h2>What happens next?</h2>
         <p className="muted">{message}</p>
-        <p className="muted">
-          There is no account, inbox recovery, or emailed edit link. Possession of the
-          expert access key is the only way to unlock later changes.
-        </p>
       </section>
-      <ExpertEditRecoveryForm />
     </div>
   );
 }

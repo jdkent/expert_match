@@ -71,7 +71,7 @@ export function OutreachComposer({ latestQuery, selectedExperts }: Props) {
     if (!primaryExpert) {
       return "";
     }
-    return `Question about ${latestQuery || "your expertise"} during Bordeaux 2026`;
+    return `Question about ${latestQuery || "your expertise"} during OHBM Bordeaux 2026`;
   }, [latestQuery, primaryExpert]);
 
   const draftBody = useMemo(() => {
@@ -81,7 +81,7 @@ export function OutreachComposer({ latestQuery, selectedExperts }: Props) {
 
     const intro = messageBody.trim().length
       ? messageBody.trim()
-      : `I found your profile through the Bordeaux 2026 expert matcher and I think your background may be a strong fit for my question about "${latestQuery}".`;
+      : `I found your profile through ohbmatchmaker.org and I think your background may be a strong fit for my question about "${latestQuery}".`;
 
     return [
       `Hello ${formatExpertSalutation(primaryExpert.full_name)},`,
@@ -101,7 +101,6 @@ export function OutreachComposer({ latestQuery, selectedExperts }: Props) {
       "",
       "Best,",
       "[Your name]",
-      "[Your email]",
     ].join("\n");
   }, [latestQuery, messageBody, primaryExpert, selectedPrimarySlots]);
 
