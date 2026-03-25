@@ -3,6 +3,8 @@ from functools import lru_cache
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_SIMILARITY_THRESHOLD = 0.75
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -14,7 +16,7 @@ class Settings(BaseSettings):
     env: str = "development"
     base_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
-    similarity_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    similarity_threshold: float = Field(default=DEFAULT_SIMILARITY_THRESHOLD, ge=0.0, le=1.0)
     embedding_dimension: int = Field(default=768, ge=8, le=2048)
     embedding_provider: str = "specter2"
     embedding_model_name: str = "allenai/specter2_base"

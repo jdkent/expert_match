@@ -2,6 +2,7 @@ from uuid import uuid4
 
 from sqlalchemy import select
 
+from app.core.config import DEFAULT_SIMILARITY_THRESHOLD
 from app.models.enums import DiscoverabilityStatus, SourceType
 from app.models.expert_profile import ExpertProfile
 from app.models.publication_record import ExpertSearchDocument
@@ -54,7 +55,7 @@ def test_rank_documents_can_exclude_publication_abstracts(session_factory):
         all_rows = retrieval_service.rank_documents(
             session=session,
             query_vector=_vector(1.0),
-            similarity_threshold=0.5,
+            similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD,
             allowed_source_types=[
                 SourceType.MANUAL_EXPERTISE.value,
                 SourceType.PUBLICATION_ABSTRACT.value,
@@ -63,7 +64,7 @@ def test_rank_documents_can_exclude_publication_abstracts(session_factory):
         manual_only_rows = retrieval_service.rank_documents(
             session=session,
             query_vector=_vector(1.0),
-            similarity_threshold=0.5,
+            similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD,
             allowed_source_types=[SourceType.MANUAL_EXPERTISE.value],
         )
 
