@@ -17,6 +17,7 @@ jobs:
       FRONTEND_REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY || 'expert-match-frontend' }}
       EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
       APP_PUBLIC_ORIGIN: ${{ vars.APP_PUBLIC_ORIGIN }}
+      APP_DOMAIN: ${{ vars.APP_DOMAIN }}
       OPENALEX_API_KEY: ${{ secrets.APP_OPENALEX_API_KEY }}
       POSTGRES_DSN: ${{ secrets.POSTGRES_DSN }}
     steps:
@@ -64,7 +65,9 @@ jobs:
             echo "BACKEND_IMAGE=${BACKEND_IMAGE}"
             echo "FRONTEND_IMAGE=${FRONTEND_IMAGE}"
             echo "APP_PUBLIC_ORIGIN=${APP_PUBLIC_ORIGIN}"
-            echo "APP_EMAIL_TRANSPORT=capture"
+            if [ -n "${APP_DOMAIN}" ]; then
+              echo "APP_DOMAIN=${APP_DOMAIN}"
+            fi
             echo "POSTGRES_DSN=${POSTGRES_DSN}"
             if [ -n "${OPENALEX_API_KEY}" ]; then
               echo "APP_OPENALEX_API_KEY=${OPENALEX_API_KEY}"
@@ -72,11 +75,15 @@ jobs:
           } > deploy/aws/compose/.env.runtime
           base64 -w 0 deploy/aws/compose/docker-compose.prod.yml > /tmp/docker-compose.prod.yml.b64
           base64 -w 0 deploy/aws/compose/.env.runtime > /tmp/runtime.env.b64
+          base64 -w 0 deploy/aws/ec2/setup-letsencrypt.sh > /tmp/setup-letsencrypt.sh.b64
+          base64 -w 0 deploy/aws/ec2/renew-letsencrypt.sh > /tmp/renew-letsencrypt.sh.b64
 
       - name: Deploy on EC2 via SSM
         run: |
           COMPOSE_B64="$(cat /tmp/docker-compose.prod.yml.b64)"
           ENV_B64="$(cat /tmp/runtime.env.b64)"
+          SETUP_LE_B64="$(cat /tmp/setup-letsencrypt.sh.b64)"
+          RENEW_LE_B64="$(cat /tmp/renew-letsencrypt.sh.b64)"
           ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
           COMMAND_ID="$(
             aws ssm send-command \
@@ -88,6 +95,9 @@ jobs:
                 \"mkdir -p /opt/expert-match\",
                 \"printf '%s' '${COMPOSE_B64}' | base64 -d >/opt/expert-match/docker-compose.yml\",
                 \"printf '%s' '${ENV_B64}' | base64 -d >/opt/expert-match/.env\",
+                \"printf '%s' '${SETUP_LE_B64}' | base64 -d >/opt/expert-match/setup-letsencrypt.sh\",
+                \"printf '%s' '${RENEW_LE_B64}' | base64 -d >/opt/expert-match/renew-letsencrypt.sh\",
+                \"chmod +x /opt/expert-match/setup-letsencrypt.sh /opt/expert-match/renew-letsencrypt.sh\",
                 \"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com\",
                 \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env pull\",
                 \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env run --rm backend alembic upgrade head\",

@@ -17,12 +17,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  mailpit:
-    image: axllent/mailpit:v1.25
-    expose:
-      - "1025"
-      - "8025"
-
   backend:
     build:
       context: .
@@ -36,19 +30,14 @@ services:
       APP_EMBEDDING_DOCUMENT_ADAPTER_NAME: ${APP_EMBEDDING_DOCUMENT_ADAPTER_NAME:-allenai/specter2}
       APP_EMBEDDING_QUERY_ADAPTER_NAME: ${APP_EMBEDDING_QUERY_ADAPTER_NAME:-allenai/specter2_adhoc_query}
       APP_EMBEDDING_DIMENSION: ${APP_EMBEDDING_DIMENSION:-768}
-      APP_EMAIL_TRANSPORT: ${APP_EMAIL_TRANSPORT:-smtp}
-      APP_SMTP_HOST: ${APP_SMTP_HOST:-mailpit}
-      APP_SMTP_PORT: ${APP_SMTP_PORT:-1025}
-      APP_SMTP_USE_TLS: ${APP_SMTP_USE_TLS:-false}
       APP_ORCID_LIVE_VALIDATION: ${APP_ORCID_LIVE_VALIDATION:-true}
       APP_OPENALEX_ENABLED: ${APP_OPENALEX_ENABLED:-true}
       APP_OPENALEX_EMAIL: ${APP_OPENALEX_EMAIL:-jamesdkent21@gmail.com}
+      APP_SEARCH_INCLUDE_PUBLICATION_ABSTRACTS: ${APP_SEARCH_INCLUDE_PUBLICATION_ABSTRACTS:-true}
       POSTGRES_DSN: ${POSTGRES_DSN:-postgresql+psycopg://expert_match:expert_match@postgres:5432/expert_match}
     depends_on:
       postgres:
         condition: service_healthy
-      mailpit:
-        condition: service_started
     expose:
       - "8000"
     volumes:

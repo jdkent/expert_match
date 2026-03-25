@@ -1,7 +1,7 @@
 # Expert Match
 
 Expert Match is a simple accountless workflow for publishing expert profiles,
-matching free-text questions to relevant experts, and sending outreach with optional
+matching free-text questions to relevant experts, and drafting outreach with optional
 OHBM 2026 Bordeaux time proposals.
 
 ## Local stack
@@ -18,9 +18,7 @@ The local development stack keeps three services aligned with production boundar
 `frontend`, `backend`, and a local `postgres` container backed by the named volume
 `postgres_data`. The frontend runs at `http://localhost:5173`, proxies `/api`,
 `/healthz`, and `/readyz` to the backend, and the backend uses `POSTGRES_DSN` to
-reach the local Compose database. Development also includes `mailpit` at
-`http://localhost:8025` so outreach emails are captured locally through SMTP without
-leaving your machine.
+reach the local Compose database.
 
 The backend now uses the real OpenAlex API for ORCID-based enrichment. By default it
 identifies requests with `APP_OPENALEX_EMAIL=jamesdkent21@gmail.com`, and it also
@@ -53,7 +51,6 @@ Then open:
 
 - frontend: `http://localhost:5173`
 - backend: `http://localhost:8000`
-- Mailpit: `http://localhost:8025`
 
 The first ingestion run can take a while because it may need to download SPECTER2 and
 fetch live ORCID/OpenAlex data. The seed ingester now uses a longer read timeout by
@@ -75,8 +72,8 @@ development database so they remain available across backend restarts.
 
 ## Architecture
 
-- `frontend/`: Vite + React interface for expert submission, access-key management, matching, and outreach
-- `backend/`: FastAPI service with typed services for expert lifecycle, matching, and outreach
+- `frontend/`: Vite + React interface for expert submission, access-key management, matching, and draft generation
+- `backend/`: FastAPI service with typed services for expert lifecycle, availability, and matching
 - `deploy/aws/`: EC2 + Docker Compose deployment artifacts for the simpler v1 rollout
 - `benchmarks/retrieval/`: repeatable retrieval benchmark harness and recorded results
 
@@ -86,7 +83,7 @@ development database so they remain available across backend restarts.
 - Publish only the frontend ingress on port `80`
 - Keep the backend internal to the Compose network
 - Point `POSTGRES_DSN` at Amazon RDS for PostgreSQL instead of a production database container
-- The current frontend is draft-only for requester outreach, so the AWS env template defaults `APP_EMAIL_TRANSPORT` to `capture` and does not require SMTP settings
+- The current frontend is draft-only for requester outreach, so production does not require any SMTP or email transport settings
 
 ## AWS instance operations
 
@@ -111,4 +108,40 @@ aws ec2 start-instances \
   --profile admin \
   --region us-east-1 \
   --instance-ids i-0d28bb7bab5cce119
+```
+
+You can also do the same thing from GitHub Actions with two manual workflows:
+
+- `Start AWS Instance`
+- `Stop AWS Instance`
+
+They use the existing repo configuration:
+
+- variable: `AWS_REGION`
+- variable: `EC2_INSTANCE_ID`
+- secret: `AWS_ACCESS_KEY_ID`
+- secret: `AWS_SECRET_ACCESS_KEY`
+
+## Let's Encrypt on EC2
+
+The production frontend can run in plain HTTP mode until a real certificate exists,
+then switch to HTTPS automatically once Let's Encrypt files are present.
+
+Before requesting the certificate:
+
+1. Point `ohbmatchmaker.org` to the EC2 public IP.
+2. Open inbound `443/tcp` on the instance security group.
+3. Set `APP_DOMAIN=ohbmatchmaker.org` in `/opt/expert-match/.env` or the GitHub deploy env.
+
+To request the initial certificate on the host:
+
+```bash
+chmod +x /opt/expert-match/setup-letsencrypt.sh /opt/expert-match/renew-letsencrypt.sh
+/opt/expert-match/setup-letsencrypt.sh ohbmatchmaker.org jamesdkent21@gmail.com
+```
+
+To renew manually:
+
+```bash
+/opt/expert-match/renew-letsencrypt.sh
 ```

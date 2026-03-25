@@ -24,9 +24,13 @@ RUN npm run build
 
 FROM nginx:1.27-alpine AS production
 
-COPY deploy/aws/compose/nginx.conf /etc/nginx/conf.d/default.conf
+RUN apk add --no-cache gettext
+COPY deploy/aws/compose/nginx.http.conf.template /etc/nginx/templates/default.http.conf.template
+COPY deploy/aws/compose/nginx.https.conf.template /etc/nginx/templates/default.https.conf.template
+COPY deploy/aws/compose/frontend-entrypoint.sh /usr/local/bin/frontend-entrypoint.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
+EXPOSE 443
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["sh", "/usr/local/bin/frontend-entrypoint.sh"]
