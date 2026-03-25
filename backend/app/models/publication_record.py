@@ -7,6 +7,7 @@ from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import Boolean, Date, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.config import DEFAULT_EMBEDDING_MODEL_NAME
 from app.db.base import Base
 
 
@@ -33,19 +34,24 @@ class ExpertSearchDocument(Base):
     __tablename__ = "expert_search_documents"
     __table_args__ = (
         Index(
-            "ix_expert_search_documents_embedding_vector_hnsw",
+            "ix_expert_search_documents_current_embedding_vector_hnsw",
             "embedding_vector",
             postgresql_using="hnsw",
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding_vector": "vector_cosine_ops"},
+            postgresql_where=text(
+                f"is_active = true AND embedding_model = '{DEFAULT_EMBEDDING_MODEL_NAME}'"
+            ),
         ),
         Index(
-            "ix_expert_search_documents_manual_embedding_vector_hnsw",
+            "ix_expert_search_documents_current_manual_embedding_vector_hnsw",
             "embedding_vector",
             postgresql_using="hnsw",
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding_vector": "vector_cosine_ops"},
-            postgresql_where=text("source_type = 'manual_expertise' AND is_active = true"),
+            postgresql_where=text(
+                f"source_type = 'manual_expertise' AND is_active = true AND embedding_model = '{DEFAULT_EMBEDDING_MODEL_NAME}'"
+            ),
         ),
     )
 
@@ -55,5 +61,5 @@ class ExpertSearchDocument(Base):
     source_record_id: Mapped[str] = mapped_column(String, index=True)
     document_text: Mapped[str] = mapped_column(Text)
     embedding_vector: Mapped[list[float]] = mapped_column(VECTOR(EMBEDDING_VECTOR_DIMENSIONS))
-    embedding_model: Mapped[str] = mapped_column(String(255), default="allenai/specter2")
+    embedding_model: Mapped[str] = mapped_column(String(255), default=DEFAULT_EMBEDDING_MODEL_NAME)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

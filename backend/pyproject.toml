@@ -9,7 +9,6 @@ description = "FastAPI backend for expert matching and outreach"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.14.0",
-  "adapters>=1.2.0",
   "cachetools>=5.4.0",
   "email-validator>=2.2.0",
   "fastapi>=0.115.0",
@@ -19,6 +18,7 @@ dependencies = [
   "pydantic-settings>=2.8.0",
   "python-dateutil>=2.9.0",
   "python-multipart>=0.0.9",
+  "sentence-transformers>=3.4.1",
   "sqlalchemy>=2.0.36",
   "torch==2.6.0+cpu; platform_system == 'Linux'",
   "torch>=2.6.0,<2.7; platform_system != 'Linux'",

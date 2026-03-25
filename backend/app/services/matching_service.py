@@ -52,6 +52,7 @@ class MatchingService:
                     query_vector=query_vector,
                     similarity_threshold=self.settings.similarity_threshold,
                     allowed_source_types=self._allowed_source_types(),
+                    embedding_model=self.embedding_service.query_embedding_label(),
                 )
 
                 expert_best_matches: dict[str, dict] = {}

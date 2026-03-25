@@ -29,10 +29,10 @@ ORCID validation is also live by default in development and production. The test
 keeps email delivery, ORCID lookups, and embeddings deterministic so backend tests stay
 fast and repeatable while the runtime code stays real.
 
-Development and production now default to `allenai/specter2_base` with the
-`allenai/specter2` proximity adapter for stored expert documents and the
-`allenai/specter2_adhoc_query` adapter for requester question search. The first
-runtime startup will download those models into `APP_EMBEDDING_CACHE_DIR`.
+Development and production now default to
+`sentence-transformers/all-mpnet-base-v2` for both stored expert text and
+requester question search. The first runtime startup will download that model
+into `APP_EMBEDDING_CACHE_DIR`.
 
 ## One-shot local bootstrap
 
@@ -52,9 +52,18 @@ Then open:
 - frontend: `http://localhost:5173`
 - backend: `http://localhost:8000`
 
-The first ingestion run can take a while because it may need to download SPECTER2 and
+The first ingestion run can take a while because it may need to download the default embedding model and
 fetch live ORCID/OpenAlex data. The seed ingester now uses a longer read timeout by
 default so profile creation can wait for that enrichment work to finish.
+
+If you change the embedding model, run the recorded backfills after migrations and
+before serving traffic:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend alembic upgrade head
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend \
+  python -m app.scripts.run_backfills
+```
 
 ## Seeded experts
 

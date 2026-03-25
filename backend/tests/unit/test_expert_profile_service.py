@@ -15,7 +15,6 @@ from app.schemas.expert_profile import ExpertProfileEditInput, ExpertProfileInpu
 def build_service(session_factory, settings: Settings | None = None):
     settings = settings or Settings(
         postgres_dsn=get_settings().postgres_dsn,
-        embedding_provider="specter2",
         openalex_enabled=True,
         orcid_live_validation=True,
         embedding_cache_dir=get_settings().embedding_cache_dir,
@@ -54,7 +53,6 @@ def test_profile_creation_creates_slots_and_search_documents(session_factory):
 def test_access_key_unlocks_profile_updates(session_factory):
     settings = Settings(
         postgres_dsn=get_settings().postgres_dsn,
-        embedding_provider="specter2",
         openalex_enabled=True,
         orcid_live_validation=True,
         embedding_cache_dir=get_settings().embedding_cache_dir,

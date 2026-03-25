@@ -101,6 +101,7 @@ jobs:
                 \"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com\",
                 \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env pull\",
                 \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env run --rm backend alembic upgrade head\",
+                \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env run --rm backend python -m app.scripts.run_backfills\",
                 \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env up -d\"
               ]" \
               --query "Command.CommandId" \

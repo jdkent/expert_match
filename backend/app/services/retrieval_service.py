@@ -25,6 +25,7 @@ class RetrievalService:
         query_vector: list[float],
         similarity_threshold: float,
         allowed_source_types: list[str],
+        embedding_model: str,
     ) -> list[tuple[ExpertProfile, ExpertSearchDocument, float]]:
         if session.bind is None or session.bind.dialect.name != "postgresql":
             raise RuntimeError("RetrievalService requires PostgreSQL with pgvector")
@@ -33,9 +34,10 @@ class RetrievalService:
             query_vector=query_vector,
             similarity_threshold=similarity_threshold,
             allowed_source_types=allowed_source_types,
+            embedding_model=embedding_model,
         )
 
-    def _base_statement(self, *, allowed_source_types: list[str]):
+    def _base_statement(self, *, allowed_source_types: list[str], embedding_model: str):
         return select(ExpertProfile, ExpertSearchDocument).join(
             ExpertSearchDocument,
             ExpertSearchDocument.expert_profile_id == ExpertProfile.id,
@@ -44,6 +46,7 @@ class RetrievalService:
             ExpertProfile.deleted_at.is_(None),
             ExpertSearchDocument.is_active.is_(True),
             ExpertSearchDocument.source_type.in_(allowed_source_types),
+            ExpertSearchDocument.embedding_model == embedding_model,
         )
 
     def _rank_documents_postgres(
@@ -53,10 +56,14 @@ class RetrievalService:
         query_vector: list[float],
         similarity_threshold: float,
         allowed_source_types: list[str],
+        embedding_model: str,
     ) -> list[tuple[ExpertProfile, ExpertSearchDocument, float]]:
         distance = ExpertSearchDocument.embedding_vector.cosine_distance(query_vector)
         rows = session.execute(
-            self._base_statement(allowed_source_types=allowed_source_types)
+            self._base_statement(
+                allowed_source_types=allowed_source_types,
+                embedding_model=embedding_model,
+            )
             .add_columns(distance.label("distance"))
             .where(distance <= 1 - similarity_threshold)
             .order_by(distance.asc())

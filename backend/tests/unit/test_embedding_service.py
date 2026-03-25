@@ -1,13 +1,17 @@
 import math
 
 import pytest
-import torch
 
-from app.core.config import Settings, get_settings
+from app.core.config import (
+    DEFAULT_EMBEDDING_MODEL_NAME,
+    DEFAULT_EMBEDDING_PROVIDER,
+    Settings,
+    get_settings,
+)
 from app.services.embedding_service import EmbeddingService
 
 
-def test_specter2_query_and_document_embeddings_are_normalized():
+def test_mpnet_query_and_document_embeddings_are_normalized():
     settings = get_settings()
     service = EmbeddingService(settings)
 
@@ -20,49 +24,48 @@ def test_specter2_query_and_document_embeddings_are_normalized():
     assert len(document_vector) == settings.embedding_dimension
     assert math.isclose(sum(value * value for value in query_vector), 1.0, rel_tol=1e-5)
     assert math.isclose(sum(value * value for value in document_vector), 1.0, rel_tol=1e-5)
-    assert service.query_embedding_label().endswith("allenai/specter2_adhoc_query")
-    assert service.document_embedding_label().endswith("allenai/specter2")
+    assert service.query_embedding_label() == DEFAULT_EMBEDDING_MODEL_NAME
+    assert service.document_embedding_label() == DEFAULT_EMBEDDING_MODEL_NAME
 
 
-def test_specter2_defaults_use_full_model_window():
+def test_mpnet_defaults_use_model_window():
     settings = get_settings()
     service = EmbeddingService(settings)
 
-    assert settings.embedding_max_sequence_length == 512
-    assert settings.embedding_chunk_token_limit == 510
-    assert service.max_sequence_length == 512
-    assert service.chunk_token_limit == 510
+    assert settings.embedding_provider == DEFAULT_EMBEDDING_PROVIDER
+    assert settings.embedding_model_name == DEFAULT_EMBEDDING_MODEL_NAME
+    assert settings.embedding_max_sequence_length == 384
+    assert settings.embedding_chunk_token_limit == 382
+    assert service.max_sequence_length == 384
+    assert service.chunk_token_limit == 382
 
 
-def test_specter2_long_text_embedding_matches_manual_chunk_average():
+def test_mpnet_long_text_embedding_matches_manual_chunk_average():
     settings = Settings(
-        embedding_provider="specter2",
-        embedding_model_name="allenai/specter2_base",
-        embedding_document_adapter_name="allenai/specter2",
-        embedding_query_adapter_name="allenai/specter2_adhoc_query",
+        embedding_provider="sentence-transformers",
+        embedding_model_name="sentence-transformers/all-mpnet-base-v2",
         embedding_dimension=768,
         embedding_chunk_token_limit=128,
         embedding_chunk_token_overlap=32,
-        embedding_max_sequence_length=512,
+        embedding_max_sequence_length=384,
         embedding_cache_dir=get_settings().embedding_cache_dir,
     )
     service = EmbeddingService(settings)
     text = " ".join(f"token-{index}" for index in range(1, 600))
 
-    tokenizer, model = service._specter2_components(
-        service.model_name,
-        service.document_adapter_name,
-        service.cache_dir,
+    tokenizer, model = service._sentence_transformer_components(service.model_name, service.cache_dir)
+    chunk_texts = service._chunk_texts(tokenizer, text)
+    assert len(chunk_texts) > 1
+
+    chunk_vectors = model.encode(
+        chunk_texts,
+        normalize_embeddings=False,
+        convert_to_numpy=True,
+        show_progress_bar=False,
     )
-    encoded = service._prepare_specter2_batch(tokenizer, text)
-    assert encoded["input_ids"].shape[0] > 1
+    averaged = chunk_vectors.mean(axis=0)
+    length = math.sqrt(float((averaged * averaged).sum()))
+    manual_vector = (averaged / length).tolist()
+    service_vector = service.embed_document(text)
 
-    with torch.no_grad():
-        outputs = model(**encoded)
-    chunk_vectors = outputs.last_hidden_state[:, 0, :]
-    averaged = chunk_vectors.mean(dim=0)
-    manual_vector = averaged / averaged.norm(p=2)
-
-    service_vector = torch.tensor(service.embed_document(text))
-
-    assert service_vector.tolist() == pytest.approx(manual_vector.tolist(), rel=1e-5, abs=1e-6)
+    assert service_vector == pytest.approx(manual_vector, rel=1e-5, abs=1e-6)

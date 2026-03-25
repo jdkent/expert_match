@@ -3,7 +3,13 @@ from functools import lru_cache
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_SIMILARITY_THRESHOLD = 0.75
+DEFAULT_SIMILARITY_THRESHOLD = 0.2
+LEGACY_EMBEDDING_MODEL_NAME = "allenai/specter2"
+DEFAULT_EMBEDDING_PROVIDER = "sentence-transformers"
+DEFAULT_EMBEDDING_MODEL_NAME = "sentence-transformers/all-mpnet-base-v2"
+DEFAULT_EMBEDDING_DIMENSION = 768
+DEFAULT_EMBEDDING_MAX_SEQUENCE_LENGTH = 384
+DEFAULT_EMBEDDING_CHUNK_TOKEN_LIMIT = 382
 
 
 class Settings(BaseSettings):
@@ -17,14 +23,12 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
     similarity_threshold: float = Field(default=DEFAULT_SIMILARITY_THRESHOLD, ge=0.0, le=1.0)
-    embedding_dimension: int = Field(default=768, ge=8, le=2048)
-    embedding_provider: str = "specter2"
-    embedding_model_name: str = "allenai/specter2_base"
-    embedding_document_adapter_name: str = "allenai/specter2"
-    embedding_query_adapter_name: str = "allenai/specter2_adhoc_query"
+    embedding_dimension: int = Field(default=DEFAULT_EMBEDDING_DIMENSION, ge=8, le=2048)
+    embedding_provider: str = DEFAULT_EMBEDDING_PROVIDER
+    embedding_model_name: str = DEFAULT_EMBEDDING_MODEL_NAME
     embedding_cache_dir: str = "/tmp/expert-match-model-cache"
-    embedding_max_sequence_length: int = Field(default=512, ge=32, le=4096)
-    embedding_chunk_token_limit: int = Field(default=510, ge=16, le=4096)
+    embedding_max_sequence_length: int = Field(default=DEFAULT_EMBEDDING_MAX_SEQUENCE_LENGTH, ge=32, le=4096)
+    embedding_chunk_token_limit: int = Field(default=DEFAULT_EMBEDDING_CHUNK_TOKEN_LIMIT, ge=16, le=4096)
     embedding_chunk_token_overlap: int = Field(default=64, ge=0, le=1024)
     orcid_base_url: str = "https://pub.orcid.org/v3.0"
     orcid_live_validation: bool = True
