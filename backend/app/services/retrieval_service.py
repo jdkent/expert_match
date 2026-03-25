@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import math
 import re
 
-from sqlalchemy import func, literal, or_, select
+from sqlalchemy import case, func, literal, select
 from sqlalchemy.orm import Session
 
 from app.models.enums import DiscoverabilityStatus
@@ -17,12 +17,12 @@ class RankedDocument:
     profile: ExpertProfile
     document: ExpertSearchDocument
     score: float
+    lexical_coverage: float | None = None
 
 
 class RetrievalService:
     LEXICAL_CANDIDATE_MULTIPLIER = 4
     MIN_LEXICAL_CANDIDATES = 100
-    TRIGRAM_QUERY_TOKEN_LIMIT = 8
     TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
     @staticmethod
@@ -60,7 +60,7 @@ class RetrievalService:
         limit: int,
     ) -> list[RankedDocument]:
         if session.bind is None or session.bind.dialect.name != "postgresql":
-            raise RuntimeError("RetrievalService requires PostgreSQL with pg_trgm and full-text search")
+            raise RuntimeError("RetrievalService requires PostgreSQL full-text search")
         return self._rank_lexical_documents_postgres(
             session=session,
             query_text=query_text,
@@ -124,55 +124,34 @@ class RetrievalService:
         limit: int,
     ) -> list[RankedDocument]:
         document_text, document_tsvector, tsquery = self._text_search_parts(query_text)
-        lowered_document_text, lowered_query_text, trigram_similarity, trigram_word_similarity = (
-            self._trigram_parts(document_text=document_text, query_text=query_text)
-        )
         ts_rank = func.ts_rank_cd(document_tsvector, tsquery)
-        lexical_score = (
-            ts_rank * 0.8
-            + func.greatest(trigram_similarity, trigram_word_similarity) * 0.2
+        query_lexemes = tuple(sorted(self._query_lexemes(session=session, query_text=query_text)))
+        lexical_coverage = self._lexical_coverage_expression(
+            document_tsvector=document_tsvector,
+            query_lexemes=query_lexemes,
         )
+        lexical_score = ts_rank
         candidate_limit = max(limit * self.LEXICAL_CANDIDATE_MULTIPLIER, self.MIN_LEXICAL_CANDIDATES)
-        fts_candidate_ids = session.scalars(
+        candidate_ids = session.scalars(
             self._base_statement(allowed_source_types=allowed_source_types)
             .with_only_columns(ExpertSearchDocument.id)
             .where(document_tsvector.op("@@")(tsquery))
             .order_by(ts_rank.desc())
             .limit(candidate_limit)
         ).all()
-        trigram_candidate_ids: list[str] = []
-        if self._should_run_trigram(
-            query_text=query_text,
-            fts_candidate_count=len(fts_candidate_ids),
-            limit=limit,
-        ):
-            trigram_candidate_ids = session.scalars(
-                self._base_statement(allowed_source_types=allowed_source_types)
-                .with_only_columns(ExpertSearchDocument.id)
-                .where(
-                    or_(
-                        lowered_document_text.bool_op("%")(lowered_query_text),
-                        literal(lowered_query_text).bool_op("<%")(lowered_document_text),
-                    )
-                )
-                .order_by(
-                    trigram_similarity.desc(),
-                    trigram_word_similarity.desc(),
-                )
-                .limit(candidate_limit)
-            ).all()
-        candidate_ids = list(dict.fromkeys([*fts_candidate_ids, *trigram_candidate_ids]))
         if not candidate_ids:
             return []
         rows = session.execute(
             self._base_statement(allowed_source_types=allowed_source_types)
-            .add_columns(lexical_score.label("lexical_score"))
+            .add_columns(
+                lexical_score.label("lexical_score"),
+                lexical_coverage.label("lexical_coverage"),
+            )
             .where(ExpertSearchDocument.id.in_(candidate_ids))
             .order_by(
                 lexical_score.desc(),
+                lexical_coverage.desc(),
                 ts_rank.desc(),
-                trigram_similarity.desc(),
-                trigram_word_similarity.desc(),
             )
             .limit(limit)
         ).all()
@@ -181,8 +160,9 @@ class RetrievalService:
                 profile=profile,
                 document=document,
                 score=round(float(score_value), 4),
+                lexical_coverage=round(float(coverage_value), 4),
             )
-            for profile, document, score_value in rows
+            for profile, document, score_value, coverage_value in rows
         ]
 
     @staticmethod
@@ -193,24 +173,27 @@ class RetrievalService:
         return document_text, document_tsvector, tsquery
 
     @staticmethod
-    def _trigram_parts(*, document_text, query_text: str):
-        lowered_document_text = func.lower(document_text)
-        lowered_query_text = query_text.lower()
-        trigram_similarity = func.similarity(lowered_document_text, lowered_query_text)
-        trigram_word_similarity = func.word_similarity(lowered_query_text, lowered_document_text)
-        return lowered_document_text, lowered_query_text, trigram_similarity, trigram_word_similarity
+    def _query_lexemes(*, session: Session, query_text: str) -> set[str]:
+        query_lexemes = session.scalar(
+            select(func.tsvector_to_array(func.to_tsvector("english", query_text)))
+        )
+        return set(query_lexemes or [])
 
-    @classmethod
-    def _should_run_trigram(
-        cls,
-        *,
-        query_text: str,
-        fts_candidate_count: int,
-        limit: int,
-    ) -> bool:
-        if fts_candidate_count >= limit:
-            return False
-        return len(cls._normalized_tokens(query_text)) <= cls.TRIGRAM_QUERY_TOKEN_LIMIT
+    @staticmethod
+    def _lexical_coverage_expression(*, document_tsvector, query_lexemes: tuple[str, ...]):
+        if not query_lexemes:
+            return literal(1.0)
+        matched_lexeme_count = sum(
+            (
+                case(
+                    (document_tsvector.op("@@")(func.to_tsquery("english", lexeme)), 1.0),
+                    else_=0.0,
+                )
+                for lexeme in query_lexemes
+            ),
+            start=literal(0.0),
+        )
+        return matched_lexeme_count / len(query_lexemes)
 
     @classmethod
     def _normalized_tokens(cls, text: str) -> set[str]:

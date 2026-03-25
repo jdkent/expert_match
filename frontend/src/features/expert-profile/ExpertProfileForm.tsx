@@ -196,7 +196,9 @@ export function ExpertProfileForm({ onCreated }: Props) {
         <div className="field">
           <span>Expertise entries</span>
           <span className="field-hint">
-            Add one short area of expertise per row so requesters can find you.
+            Please list areas of expertise that you are comfortable being contacted about. You can be both specific and broad here.
+            For example, "cognitive neuroscience methods" is a broad category and "fMRI denoising techniques" is a more specific one, and you can include both as separate entries.
+            You are encourage to add multiple entries to increase the chances of good matches.
           </span>
           <div className="expertise-rows">
             {expertiseEntries.map((entry, index) => (

@@ -23,21 +23,16 @@ class ExpertMatchCandidate:
     lexical_document: ExpertSearchDocument | None = None
     lexical_rank: int | None = None
     lexical_score: float | None = None
+    lexical_coverage: float | None = None
     semantic_document: ExpertSearchDocument | None = None
     semantic_rank: int | None = None
     semantic_score: float | None = None
 
-    def raw_rrf_score(self, rrf_k: int) -> float:
-        score = 0.0
-        if self.lexical_rank is not None:
-            score += 1 / (rrf_k + self.lexical_rank)
-        if self.semantic_rank is not None:
-            score += 1 / (rrf_k + self.semantic_rank)
-        return score
-
 
 class MatchingService:
     MAX_MATCHES = 5
+    LEXICAL_FUSION_WEIGHT = 0.5
+    SEMANTIC_FUSION_WEIGHT = 0.5
 
     def __init__(
         self,
@@ -147,21 +142,33 @@ class MatchingService:
         )
 
         ranked_matches: list[dict] = []
+        lexical_scale = self._score_scale(
+            candidate.lexical_score
+            for candidate in candidates.values()
+            if candidate.lexical_score is not None
+        )
+        semantic_scale = self._score_scale(
+            candidate.semantic_score
+            for candidate in candidates.values()
+            if candidate.semantic_score is not None
+        )
         for candidate in candidates.values():
-            raw_rrf_score = candidate.raw_rrf_score(self.settings.rrf_k)
-            normalized_rrf_score = self._normalized_rrf_score(raw_rrf_score)
-            if normalized_rrf_score < self.settings.match_acceptance_threshold:
+            lexical_component = self._lexical_component(candidate, lexical_scale)
+            semantic_component = self._normalized_modality_score(candidate.semantic_score, semantic_scale)
+            aggregate_score = (
+                lexical_component * self.LEXICAL_FUSION_WEIGHT
+                + semantic_component * self.SEMANTIC_FUSION_WEIGHT
+            )
+            if aggregate_score < self.settings.match_acceptance_threshold:
                 continue
             supporting_document = self._supporting_document(candidate)
+            supporting_score = self._supporting_document_score(candidate)
             ranked_matches.append(
                 {
                     "expert_profile_id": candidate.profile.id,
                     "expert_search_document_id": supporting_document.id,
-                    "aggregate_similarity_score": round(normalized_rrf_score, 4),
-                    "top_document_similarity_score": round(
-                        candidate.semantic_score or normalized_rrf_score,
-                        4,
-                    ),
+                    "aggregate_similarity_score": round(aggregate_score, 4),
+                    "top_document_similarity_score": round(supporting_score, 4),
                     "matched_document_excerpt": supporting_document.document_text[:180],
                     "full_name": candidate.profile.full_name,
                     "email": candidate.profile.email,
@@ -172,7 +179,10 @@ class MatchingService:
                     "bluesky_identifier": candidate.profile.bluesky_identifier,
                     "github_handle": candidate.profile.github_handle,
                     "match_explanation": self._match_explanation(candidate, supporting_document),
-                    "_raw_rrf_score": raw_rrf_score,
+                    "_aggregate_score": aggregate_score,
+                    "_lexical_component": lexical_component,
+                    "_semantic_component": semantic_component,
+                    "_lexical_coverage": candidate.lexical_coverage or 0.0,
                     "_semantic_score": candidate.semantic_score or 0.0,
                     "_lexical_score": candidate.lexical_score or 0.0,
                 }
@@ -180,7 +190,10 @@ class MatchingService:
 
         ranked_matches.sort(
             key=lambda item: (
-                item["_raw_rrf_score"],
+                item["_aggregate_score"],
+                item["_lexical_component"],
+                item["_lexical_coverage"],
+                item["_semantic_component"],
                 item["_semantic_score"],
                 item["_lexical_score"],
             ),
@@ -213,6 +226,7 @@ class MatchingService:
                 candidate.lexical_document = ranked_document.document
                 candidate.lexical_rank = rank
                 candidate.lexical_score = ranked_document.score
+                candidate.lexical_coverage = getattr(ranked_document, "lexical_coverage", None)
                 continue
             if candidate.semantic_rank is not None and candidate.semantic_rank <= rank:
                 continue
@@ -220,9 +234,21 @@ class MatchingService:
             candidate.semantic_rank = rank
             candidate.semantic_score = ranked_document.score
 
-    def _normalized_rrf_score(self, raw_rrf_score: float) -> float:
-        max_rrf_score = 2 / (self.settings.rrf_k + 1)
-        return min(raw_rrf_score / max_rrf_score, 1.0)
+    @staticmethod
+    def _score_scale(scores) -> float:
+        return max(scores, default=0.0) or 1.0
+
+    @staticmethod
+    def _normalized_modality_score(score: float | None, scale: float) -> float:
+        if score is None:
+            return 0.0
+        return min(max(score / scale, 0.0), 1.0)
+
+    def _lexical_component(self, candidate: ExpertMatchCandidate, lexical_scale: float) -> float:
+        relative_score = self._normalized_modality_score(candidate.lexical_score, lexical_scale)
+        if candidate.lexical_coverage is None or candidate.lexical_coverage <= 0.0:
+            return relative_score
+        return relative_score * candidate.lexical_coverage
 
     @staticmethod
     def _supporting_document(candidate: ExpertMatchCandidate) -> ExpertSearchDocument:
@@ -233,6 +259,16 @@ class MatchingService:
         if candidate.lexical_rank <= candidate.semantic_rank:
             return candidate.lexical_document
         return candidate.semantic_document
+
+    @staticmethod
+    def _supporting_document_score(candidate: ExpertMatchCandidate) -> float:
+        if candidate.lexical_document is None:
+            return candidate.semantic_score or 0.0
+        if candidate.semantic_document is None:
+            return candidate.lexical_score or 0.0
+        if candidate.lexical_rank <= candidate.semantic_rank:
+            return candidate.lexical_score or 0.0
+        return candidate.semantic_score or 0.0
 
     @staticmethod
     def _match_explanation(

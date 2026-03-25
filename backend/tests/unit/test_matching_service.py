@@ -145,8 +145,16 @@ def test_matching_service_fuses_lexical_and_semantic_rankings():
 
     retrieval_service = Mock()
     retrieval_service.rank_lexical_documents.return_value = [
-        type("RankedDocument", (), {"profile": top_profile, "document": top_document, "score": 7.5})(),
-        type("RankedDocument", (), {"profile": second_profile, "document": second_document, "score": 6.0})(),
+        type(
+            "RankedDocument",
+            (),
+            {"profile": top_profile, "document": top_document, "score": 7.5, "lexical_coverage": 1.0},
+        )(),
+        type(
+            "RankedDocument",
+            (),
+            {"profile": second_profile, "document": second_document, "score": 7.5, "lexical_coverage": 0.33},
+        )(),
     ]
     retrieval_service.rank_semantic_documents.return_value = [
         type("RankedDocument", (), {"profile": second_profile, "document": second_document, "score": 0.92})(),
@@ -162,11 +170,91 @@ def test_matching_service_fuses_lexical_and_semantic_rankings():
 
     payload = service.create_match_query(type("Payload", (), {"query_text": "reproducible metadata workflows"})())
 
-    assert [match["expert_id"] for match in payload["matches"]] == [second_profile.id, top_profile.id]
-    assert payload["matches"][0]["aggregate_similarity_score"] == payload["matches"][1]["aggregate_similarity_score"]
+    assert [match["expert_id"] for match in payload["matches"]] == [top_profile.id, second_profile.id]
+    assert payload["matches"][0]["aggregate_similarity_score"] > payload["matches"][1]["aggregate_similarity_score"]
 
 
-def test_matching_service_can_return_no_matches_when_rrf_scores_stay_below_threshold():
+def test_matching_service_penalizes_partial_lexical_coverage_for_long_queries():
+    session = MagicMock()
+    session.__enter__ = Mock(return_value=session)
+    session.__exit__ = Mock(return_value=None)
+    session.add = Mock()
+    session.flush = Mock()
+    session.execute = Mock()
+    session.commit = Mock()
+    session.rollback = Mock()
+
+    embedding_service = Mock()
+    embedding_service.embed_query.return_value = [1.0] + [0.0] * 767
+    embedding_service.query_embedding_label.return_value = "sentence-transformers/all-mpnet-base-v2"
+
+    strong_profile = ExpertProfile(
+        id=str(uuid4()),
+        full_name="Ada Lovelace",
+        email="ada@example.org",
+        access_key_hash="dummy-strong",
+    )
+    weak_profile = ExpertProfile(
+        id=str(uuid4()),
+        full_name="Grace Hopper",
+        email="grace@example.org",
+        access_key_hash="dummy-weak",
+    )
+    strong_document = ExpertSearchDocument(
+        id=str(uuid4()),
+        expert_profile_id=strong_profile.id,
+        source_type="manual_expertise",
+        source_record_id=str(uuid4()),
+        document_text="reproducible research metadata workflows",
+        embedding_vector=[1.0] + [0.0] * 767,
+        embedding_model="sentence-transformers/all-mpnet-base-v2",
+        is_active=True,
+    )
+    weak_document = ExpertSearchDocument(
+        id=str(uuid4()),
+        expert_profile_id=weak_profile.id,
+        source_type="manual_expertise",
+        source_record_id=str(uuid4()),
+        document_text="metadata",
+        embedding_vector=[1.0] + [0.0] * 767,
+        embedding_model="sentence-transformers/all-mpnet-base-v2",
+        is_active=True,
+    )
+
+    retrieval_service = Mock()
+    retrieval_service.rank_lexical_documents.return_value = [
+        type(
+            "RankedDocument",
+            (),
+            {"profile": strong_profile, "document": strong_document, "score": 4.0, "lexical_coverage": 1.0},
+        )(),
+        type(
+            "RankedDocument",
+            (),
+            {"profile": weak_profile, "document": weak_document, "score": 4.0, "lexical_coverage": 0.25},
+        )(),
+    ]
+    retrieval_service.rank_semantic_documents.return_value = [
+        type("RankedDocument", (), {"profile": strong_profile, "document": strong_document, "score": 0.91})(),
+        type("RankedDocument", (), {"profile": weak_profile, "document": weak_document, "score": 0.91})(),
+    ]
+
+    service = MatchingService(
+        session_factory=Mock(return_value=session),
+        settings=Settings(
+            POSTGRES_DSN="postgresql+psycopg://example",
+            match_acceptance_threshold=0.63,
+        ),
+        embedding_service=embedding_service,
+        retrieval_service=retrieval_service,
+    )
+
+    payload = service.create_match_query(type("Payload", (), {"query_text": "reproducible research metadata workflows"})())
+
+    assert [match["expert_id"] for match in payload["matches"]] == [strong_profile.id]
+
+
+def test_matching_service_can_return_no_matches_when_fused_scores_stay_below_threshold():
     session = MagicMock()
     session.__enter__ = Mock(return_value=session)
     session.__exit__ = Mock(return_value=None)
@@ -216,6 +304,58 @@ def test_matching_service_can_return_no_matches_when_rrf_scores_stay_below_thres
     payload = service.create_match_query(type("Payload", (), {"query_text": "metadata workflows"})())
 
     assert payload["matches"] == []
+
+
+def test_matching_service_semantic_only_match_uses_half_weight():
+    session = MagicMock()
+    session.__enter__ = Mock(return_value=session)
+    session.__exit__ = Mock(return_value=None)
+    session.add = Mock()
+    session.flush = Mock()
+    session.execute = Mock()
+    session.commit = Mock()
+    session.rollback = Mock()
+
+    embedding_service = Mock()
+    embedding_service.embed_query.return_value = [1.0] + [0.0] * 767
+    embedding_service.query_embedding_label.return_value = "sentence-transformers/all-mpnet-base-v2"
+
+    profile = ExpertProfile(
+        id=str(uuid4()),
+        full_name="Ada Lovelace",
+        email="ada@example.org",
+        access_key_hash="dummy",
+    )
+    document = ExpertSearchDocument(
+        id=str(uuid4()),
+        expert_profile_id=profile.id,
+        source_type="manual_expertise",
+        source_record_id=str(uuid4()),
+        document_text="metadata workflows",
+        embedding_vector=[1.0] + [0.0] * 767,
+        embedding_model="sentence-transformers/all-mpnet-base-v2",
+        is_active=True,
+    )
+
+    retrieval_service = Mock()
+    retrieval_service.rank_lexical_documents.return_value = []
+    retrieval_service.rank_semantic_documents.return_value = [
+        type("RankedDocument", (), {"profile": profile, "document": document, "score": 0.81})()
+    ]
+
+    service = MatchingService(
+        session_factory=Mock(return_value=session),
+        settings=Settings(
+            POSTGRES_DSN="postgresql+psycopg://example",
+            match_acceptance_threshold=0.5,
+        ),
+        embedding_service=embedding_service,
+        retrieval_service=retrieval_service,
+    )
+
+    payload = service.create_match_query(type("Payload", (), {"query_text": "metadata workflows"})())
+
+    assert payload["matches"][0]["aggregate_similarity_score"] == 0.5
 
 
 def test_matching_service_matches_short_bio_content(client):

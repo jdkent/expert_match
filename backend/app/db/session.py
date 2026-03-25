@@ -14,7 +14,6 @@ from app.core.config import Settings, get_settings
 
 
 TSVECTOR_INDEX_NAME = "ix_expert_search_documents_document_text_tsvector"
-TRGM_INDEX_NAME = "ix_expert_search_documents_document_text_trgm"
 
 
 def database_is_configured(settings: Settings | None = None) -> bool:
@@ -39,7 +38,6 @@ def ensure_postgres_extensions(engine: Engine) -> None:
         return
     with engine.begin() as connection:
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
 
 
 def ensure_expert_search_indexes(engine: Engine) -> None:
@@ -54,16 +52,6 @@ def ensure_expert_search_indexes(engine: Engine) -> None:
                 CREATE INDEX IF NOT EXISTS {TSVECTOR_INDEX_NAME}
                 ON expert_search_documents
                 USING gin (to_tsvector('english', coalesce(document_text, '')))
-                WHERE is_active = true
-                """
-            )
-        )
-        connection.execute(
-            text(
-                f"""
-                CREATE INDEX IF NOT EXISTS {TRGM_INDEX_NAME}
-                ON expert_search_documents
-                USING gin (lower(document_text) gin_trgm_ops)
                 WHERE is_active = true
                 """
             )

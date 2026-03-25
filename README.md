@@ -19,7 +19,7 @@ The local development stack keeps three services aligned with production boundar
 `postgres_data_pg17`. The frontend runs at `http://localhost:5173`, proxies `/api`,
 `/healthz`, and `/readyz` to the backend, and the backend uses `POSTGRES_DSN` to
 reach the local Compose database. The Compose Postgres image targets PostgreSQL 17 with
-`pgvector`, and the backend uses built-in PostgreSQL full-text search plus `pg_trgm`
+`pgvector`, and the backend uses built-in PostgreSQL full-text search
 for lexical ranking so the same approach works on Amazon RDS.
 
 The backend now uses the real OpenAlex API for ORCID-based enrichment. By default it
@@ -93,7 +93,7 @@ development database so they remain available across backend restarts.
 - Use the frontend production image target to serve built static assets from Nginx
 - Publish only the frontend ingress on port `80`
 - Keep the backend internal to the Compose network
-- Point `POSTGRES_DSN` at a PostgreSQL 17 deployment with `pgvector` and `pg_trgm` enabled
+- Point `POSTGRES_DSN` at a PostgreSQL 17 deployment with `pgvector` enabled
 - The current frontend is draft-only for requester outreach, so production does not require any SMTP or email transport settings
 
 ## AWS instance operations

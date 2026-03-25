@@ -6,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 DEFAULT_MATCH_ACCEPTANCE_THRESHOLD = 0.60
 DEFAULT_LEXICAL_SEARCH_TOP_K = 50
 DEFAULT_SEMANTIC_SEARCH_TOP_K = 25
-DEFAULT_RRF_K = 15
 LEGACY_EMBEDDING_MODEL_NAME = "allenai/specter2"
 DEFAULT_EMBEDDING_PROVIDER = "sentence-transformers"
 DEFAULT_EMBEDDING_MODEL_NAME = "sentence-transformers/all-mpnet-base-v2"
@@ -40,7 +39,6 @@ class Settings(BaseSettings):
     )
     lexical_search_top_k: int = Field(default=DEFAULT_LEXICAL_SEARCH_TOP_K, ge=25, le=100)
     semantic_search_top_k: int = Field(default=DEFAULT_SEMANTIC_SEARCH_TOP_K, ge=10, le=50)
-    rrf_k: int = Field(default=DEFAULT_RRF_K, ge=1, le=500)
     embedding_dimension: int = Field(default=DEFAULT_EMBEDDING_DIMENSION, ge=8, le=2048)
     embedding_provider: str = DEFAULT_EMBEDDING_PROVIDER
     embedding_model_name: str = DEFAULT_EMBEDDING_MODEL_NAME

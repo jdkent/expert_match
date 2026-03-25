@@ -10,30 +10,6 @@ def _vector(first_value: float) -> list[float]:
     return [first_value] + [0.0] * 767
 
 
-def test_should_run_trigram_when_fts_candidates_are_insufficient_for_short_query():
-    assert RetrievalService._should_run_trigram(
-        query_text="metadta workflo reproducble",
-        fts_candidate_count=0,
-        limit=10,
-    )
-
-
-def test_should_not_run_trigram_when_fts_candidates_already_fill_limit():
-    assert not RetrievalService._should_run_trigram(
-        query_text="metadata workflows",
-        fts_candidate_count=10,
-        limit=10,
-    )
-
-
-def test_should_not_run_trigram_for_long_queries_even_when_fts_is_sparse():
-    assert not RetrievalService._should_run_trigram(
-        query_text="i need help with reproducible research workflows and metadata for neuroimaging",
-        fts_candidate_count=0,
-        limit=10,
-    )
-
-
 def test_rank_semantic_documents_can_exclude_publication_abstracts(session_factory):
     retrieval_service = RetrievalService()
     with session_factory() as session:
@@ -204,45 +180,8 @@ def test_rank_lexical_documents_ranks_full_text_matches_first(session_factory):
     assert rows[0].profile.full_name == "Ada Lovelace"
     assert rows[1].profile.full_name == "Grace Hopper"
     assert rows[0].score > rows[1].score
-    assert rows[0].score > 0
-
-
-def test_rank_lexical_documents_uses_trigram_fallback_for_typos(session_factory):
-    retrieval_service = RetrievalService()
-    with session_factory() as session:
-        profile = ExpertProfile(
-            id=str(uuid4()),
-            full_name="Ada Lovelace",
-            email="ada@example.org",
-            discoverability_status=DiscoverabilityStatus.ACTIVE.value,
-            access_key_hash="dummy-typo",
-        )
-        session.add(profile)
-        session.flush()
-        session.add(
-            ExpertSearchDocument(
-                id=str(uuid4()),
-                expert_profile_id=profile.id,
-                source_type=SourceType.MANUAL_EXPERTISE.value,
-                source_record_id=str(uuid4()),
-                document_text="metadata workflows for reproducible science",
-                embedding_vector=_vector(1.0),
-                embedding_model="test-model",
-                is_active=True,
-            )
-        )
-        session.commit()
-
-    with session_factory() as session:
-        rows = retrieval_service.rank_lexical_documents(
-            session=session,
-            query_text="metadta workflo reproducble",
-            allowed_source_types=[SourceType.MANUAL_EXPERTISE.value],
-            limit=10,
-        )
-
-    assert len(rows) == 1
-    assert rows[0].profile.full_name == "Ada Lovelace"
+    assert rows[0].lexical_coverage == 1.0
+    assert rows[1].lexical_coverage < rows[0].lexical_coverage
     assert rows[0].score > 0
 
 
@@ -282,4 +221,5 @@ def test_rank_lexical_documents_can_match_partial_overlap_query_terms(session_fa
 
     assert len(rows) == 1
     assert rows[0].profile.full_name == "BIDS Expert"
+    assert 0 < rows[0].lexical_coverage < 1
     assert rows[0].score > 0
