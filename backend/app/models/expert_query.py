@@ -6,7 +6,7 @@ from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.config import DEFAULT_EMBEDDING_MODEL_NAME, DEFAULT_SIMILARITY_THRESHOLD
+from app.core.config import DEFAULT_EMBEDDING_MODEL_NAME, DEFAULT_MATCH_ACCEPTANCE_THRESHOLD
 from app.db.base import Base
 from app.models.publication_record import EMBEDDING_VECTOR_DIMENSIONS
 
@@ -19,7 +19,11 @@ class ExpertQuery(Base):
     query_text: Mapped[str] = mapped_column(Text)
     query_embedding_vector: Mapped[list[float]] = mapped_column(VECTOR(EMBEDDING_VECTOR_DIMENSIONS))
     embedding_model: Mapped[str] = mapped_column(String(255), default=DEFAULT_EMBEDDING_MODEL_NAME)
-    similarity_threshold: Mapped[float] = mapped_column(Float, default=DEFAULT_SIMILARITY_THRESHOLD)
+    match_acceptance_threshold: Mapped[float] = mapped_column(
+        "similarity_threshold",
+        Float,
+        default=DEFAULT_MATCH_ACCEPTANCE_THRESHOLD,
+    )
     search_status: Mapped[str] = mapped_column(String(32), default="pending")
 
 

@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy import select
 
-from app.core.config import DEFAULT_SIMILARITY_THRESHOLD
+from app.core.config import DEFAULT_MATCH_ACCEPTANCE_THRESHOLD
 from app.models.backfill_run import BackfillRun
 from app.models.enums import DiscoverabilityStatus, SourceType
 from app.models.expert_profile import ExpertProfile
@@ -46,7 +46,7 @@ def test_mark_legacy_embeddings_is_idempotent(session_factory):
                 query_text="metadata",
                 query_embedding_vector=[1.0] + [0.0] * 767,
                 embedding_model="mystery-model",
-                similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD,
+                match_acceptance_threshold=DEFAULT_MATCH_ACCEPTANCE_THRESHOLD,
                 search_status="ready",
             )
         )

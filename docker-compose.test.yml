@@ -9,7 +9,7 @@ services:
           "pg_isready -U expert_match -d expert_match_test",
         ]
     volumes:
-      - postgres_data_test:/var/lib/postgresql/data
+      - postgres_data_test_pg17:/var/lib/postgresql/data
 
   backend:
     environment:
@@ -25,4 +25,4 @@ services:
       PLAYWRIGHT_BASE_URL: http://frontend:5173
 
 volumes:
-  postgres_data_test:
+  postgres_data_test_pg17:

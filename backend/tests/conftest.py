@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.db.session import ensure_pgvector_extension
+from app.db.session import ensure_expert_search_indexes, ensure_postgres_extensions
 from app.models import *  # noqa: F403
 from app.main import app
 
@@ -16,9 +16,10 @@ from app.main import app
 def engine():
     settings = get_settings()
     engine = create_engine(settings.postgres_dsn, pool_pre_ping=True)
-    ensure_pgvector_extension(engine)
+    ensure_postgres_extensions(engine)
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    ensure_expert_search_indexes(engine)
     yield engine
     Base.metadata.drop_all(engine)
     engine.dispose()

@@ -16,9 +16,11 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml config
 
 The local development stack keeps three services aligned with production boundaries:
 `frontend`, `backend`, and a local `postgres` container backed by the named volume
-`postgres_data`. The frontend runs at `http://localhost:5173`, proxies `/api`,
+`postgres_data_pg17`. The frontend runs at `http://localhost:5173`, proxies `/api`,
 `/healthz`, and `/readyz` to the backend, and the backend uses `POSTGRES_DSN` to
-reach the local Compose database.
+reach the local Compose database. The Compose Postgres image targets PostgreSQL 17 with
+`pgvector`, and the backend uses built-in PostgreSQL full-text search plus `pg_trgm`
+for lexical ranking so the same approach works on Amazon RDS.
 
 The backend now uses the real OpenAlex API for ORCID-based enrichment. By default it
 identifies requests with `APP_OPENALEX_EMAIL=jamesdkent21@gmail.com`, and it also
@@ -91,7 +93,7 @@ development database so they remain available across backend restarts.
 - Use the frontend production image target to serve built static assets from Nginx
 - Publish only the frontend ingress on port `80`
 - Keep the backend internal to the Compose network
-- Point `POSTGRES_DSN` at Amazon RDS for PostgreSQL instead of a production database container
+- Point `POSTGRES_DSN` at a PostgreSQL 17 deployment with `pgvector` and `pg_trgm` enabled
 - The current frontend is draft-only for requester outreach, so production does not require any SMTP or email transport settings
 
 ## AWS instance operations

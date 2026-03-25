@@ -20,7 +20,7 @@ export type MatchedExpert = {
 
 export type MatchResponse = {
   match_query_id: string;
-  applied_similarity_threshold: number;
+  applied_match_acceptance_threshold: number;
   matches: MatchedExpert[];
 };
 

@@ -24,5 +24,5 @@ class MatchedExpertSummary(APIModel):
 
 class MatchQueryResponse(APIModel):
     match_query_id: UUID
-    applied_similarity_threshold: float
+    applied_match_acceptance_threshold: float
     matches: list[MatchedExpertSummary]

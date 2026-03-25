@@ -4,13 +4,17 @@ from contextlib import asynccontextmanager
 from functools import lru_cache
 
 from pgvector.psycopg import register_vector
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import Settings, get_settings
+
+
+TSVECTOR_INDEX_NAME = "ix_expert_search_documents_document_text_tsvector"
+TRGM_INDEX_NAME = "ix_expert_search_documents_document_text_trgm"
 
 
 def database_is_configured(settings: Settings | None = None) -> bool:
@@ -26,15 +30,48 @@ def get_engine(dsn: str) -> Engine:
         def _register_pgvector(dbapi_connection, connection_record):  # pragma: no cover - event hook
             register_vector(dbapi_connection)
 
-        ensure_pgvector_extension(engine)
+        ensure_postgres_extensions(engine)
     return engine
 
 
-def ensure_pgvector_extension(engine: Engine) -> None:
+def ensure_postgres_extensions(engine: Engine) -> None:
     if engine.dialect.name != "postgresql":
         return
     with engine.begin() as connection:
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+
+
+def ensure_expert_search_indexes(engine: Engine) -> None:
+    if engine.dialect.name != "postgresql":
+        return
+    if "expert_search_documents" not in inspect(engine).get_table_names():
+        return
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                f"""
+                CREATE INDEX IF NOT EXISTS {TSVECTOR_INDEX_NAME}
+                ON expert_search_documents
+                USING gin (to_tsvector('english', coalesce(document_text, '')))
+                WHERE is_active = true
+                """
+            )
+        )
+        connection.execute(
+            text(
+                f"""
+                CREATE INDEX IF NOT EXISTS {TRGM_INDEX_NAME}
+                ON expert_search_documents
+                USING gin (lower(document_text) gin_trgm_ops)
+                WHERE is_active = true
+                """
+            )
+        )
+
+
+def ensure_pgvector_extension(engine: Engine) -> None:
+    ensure_postgres_extensions(engine)
 
 
 def get_session_factory(settings: Settings | None = None) -> sessionmaker[Session]:

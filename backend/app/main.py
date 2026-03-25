@@ -6,7 +6,13 @@ from fastapi import FastAPI
 from app.api import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.db.session import database_is_configured, ensure_pgvector_extension, get_engine, get_session_factory
+from app.db.session import (
+    database_is_configured,
+    ensure_expert_search_indexes,
+    ensure_postgres_extensions,
+    get_engine,
+    get_session_factory,
+)
 from app.services.availability_service import AvailabilityService
 from app.services.embedding_service import EmbeddingService
 from app.services.expert_profile_service import ExpertProfileService
@@ -24,7 +30,9 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("POSTGRES_DSN must be configured")
     app.state.settings = settings
     app.state.database_configured = database_is_configured(settings)
-    ensure_pgvector_extension(get_engine(settings.postgres_dsn))
+    engine = get_engine(settings.postgres_dsn)
+    ensure_postgres_extensions(engine)
+    ensure_expert_search_indexes(engine)
     session_factory = get_session_factory(settings)
     embedding_service = EmbeddingService(settings=settings)
     retrieval_service = RetrievalService()
