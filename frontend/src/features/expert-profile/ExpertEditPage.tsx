@@ -16,7 +16,9 @@ export function ExpertEditPage() {
     enabled: submittedAccessKey !== null,
   });
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [expertiseEntriesDraft, setExpertiseEntriesDraft] = useState<string[]>([]);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
+  const [saveState, setSaveState] = useState("");
 
   const slotIds = useMemo(
     () =>
@@ -28,25 +30,50 @@ export function ExpertEditPage() {
     setSelectedSlotIds(slotIds);
   }, [slotIds]);
 
+  useEffect(() => {
+    setExpertiseEntriesDraft(data?.expertise_entries.length ? data.expertise_entries : [""]);
+  }, [data]);
+
+  useEffect(() => {
+    if (!data) {
+      setDraft({});
+      setSaveState("");
+      return;
+    }
+    setDraft({
+      full_name: data.full_name,
+      orcid_id: data.orcid_id ?? "",
+      website_url: data.website_url ?? "",
+      x_handle: data.x_handle ?? "",
+      linkedin_identifier: data.linkedin_identifier ?? "",
+      bluesky_identifier: data.bluesky_identifier ?? "",
+      github_handle: data.github_handle ?? "",
+    });
+    setSaveState("");
+  }, [data]);
+
   const updateMutation = useMutation({
     mutationFn: async () =>
       expertProfilesApi.updateProfile(submittedAccessKey!, {
-        full_name: draft.full_name ?? data?.full_name,
-        orcid_id: draft.orcid_id ?? data?.orcid_id ?? null,
-        website_url: draft.website_url ?? data?.website_url ?? null,
-        x_handle: draft.x_handle ?? data?.x_handle ?? null,
-        linkedin_identifier: draft.linkedin_identifier ?? data?.linkedin_identifier ?? null,
-        bluesky_identifier: draft.bluesky_identifier ?? data?.bluesky_identifier ?? null,
-        github_handle: draft.github_handle ?? data?.github_handle ?? null,
-        expertise_entries: (
-          draft.expertise_entries
-            ? draft.expertise_entries.split("\n").map((entry) => entry.trim()).filter(Boolean)
-            : data?.expertise_entries
-        ) ?? [],
+        full_name: draft.full_name,
+        orcid_id: draft.orcid_id || null,
+        website_url: draft.website_url || null,
+        x_handle: draft.x_handle || null,
+        linkedin_identifier: draft.linkedin_identifier || null,
+        bluesky_identifier: draft.bluesky_identifier || null,
+        github_handle: draft.github_handle || null,
+        expertise_entries: expertiseEntriesDraft.map((entry) => entry.trim()).filter(Boolean),
         available_slot_ids: selectedSlotIds,
       }),
+    onMutate: () => {
+      setSaveState("Saving changes...");
+    },
     onSuccess: async () => {
       await refetch();
+      setSaveState("Profile changes saved.");
+    },
+    onError: (error) => {
+      setSaveState(error instanceof Error ? error.message : "Could not save profile changes.");
     },
   });
 
@@ -115,6 +142,16 @@ export function ExpertEditPage() {
           <h2>Edit profile</h2>
           <p className="muted">Update expertise, ORCID, public links, or availability.</p>
         </div>
+        <div className="button-row">
+          <button
+            className="button-primary"
+            onClick={() => updateMutation.mutate()}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? "Saving..." : "Save profile changes"}
+          </button>
+        </div>
+        {saveState ? <div className="muted">{saveState}</div> : null}
         <div className="form-grid">
           {[
             ["full_name", data.full_name],
@@ -128,38 +165,84 @@ export function ExpertEditPage() {
             <label key={key} className="field">
               <span>{key.replaceAll("_", " ")}</span>
               <input
-                defaultValue={value}
+                value={draft[key] ?? value}
                 onChange={(event) =>
-                  setDraft((current) => ({ ...current, [key]: event.target.value }))
+                  {
+                    setSaveState("");
+                    setDraft((current) => ({ ...current, [key]: event.target.value }));
+                  }
                 }
               />
             </label>
           ))}
-          <label className="field">
+          <div className="field">
             <span>Expertise entries</span>
-            <textarea
-              defaultValue={data.expertise_entries.join("\n")}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, expertise_entries: event.target.value }))
-              }
-            />
-          </label>
+            <div className="expertise-rows">
+              {expertiseEntriesDraft.map((entry, index) => (
+                <div key={`expertise-entry-${index}`} className="expertise-row">
+                  <input
+                    aria-label={`Expertise entry ${index + 1}`}
+                    value={entry}
+                    onChange={(event) =>
+                      {
+                        setSaveState("");
+                        setExpertiseEntriesDraft((current) =>
+                          current.map((candidate, candidateIndex) =>
+                            candidateIndex === index ? event.target.value : candidate,
+                          ),
+                        );
+                      }
+                    }
+                  />
+                  {expertiseEntriesDraft.length > 1 ? (
+                    <button
+                      type="button"
+                      className="button-secondary expertise-remove"
+                      onClick={() =>
+                        setExpertiseEntriesDraft((current) =>
+                          current.filter((_, candidateIndex) => candidateIndex !== index),
+                        )
+                      }
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <div className="button-row">
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => setExpertiseEntriesDraft((current) => [...current, ""])}
+              >
+                Add another expertise
+              </button>
+            </div>
+          </div>
         </div>
         <AvailabilityGrid
           slots={data.availability_slots}
           selectedSlotIds={selectedSlotIds}
           onSetSlotSelection={(slotId, isSelected) =>
-            setSelectedSlotIds((current) =>
-              isSelected
-                ? current.includes(slotId)
-                  ? current
-                  : [...current, slotId]
-                : current.filter((candidate) => candidate !== slotId),
-            )
+            {
+              setSaveState("");
+              setSelectedSlotIds((current) =>
+                isSelected
+                  ? current.includes(slotId)
+                    ? current
+                    : [...current, slotId]
+                  : current.filter((candidate) => candidate !== slotId),
+              );
+            }
           }
         />
-        <button className="button-primary" onClick={() => updateMutation.mutate()}>
-          Save profile changes
+        <button
+          className="button-primary"
+          onClick={() => updateMutation.mutate()}
+          disabled={updateMutation.isPending}
+        >
+          {updateMutation.isPending ? "Saving..." : "Save profile changes"}
         </button>
       </section>
       <DeleteProfileDialog

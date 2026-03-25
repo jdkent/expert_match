@@ -350,13 +350,25 @@ button {
 .results-layout {
   display: grid;
   gap: 1rem;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-columns: 1fr;
 }
 
 .expert-stack {
   display: grid;
   gap: 1rem;
   max-width: 54rem;
+}
+
+.matched-expert-panel {
+  gap: 0.9rem;
+}
+
+.matched-expert-scroll {
+  display: grid;
+  gap: 0.9rem;
+  max-height: 28rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
 }
 
 .form-grid {
@@ -385,6 +397,23 @@ button {
 
 .field textarea {
   min-height: 120px;
+}
+
+.expertise-rows {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.expertise-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.expertise-remove {
+  min-height: 2.85rem;
+  padding-inline: 1rem;
 }
 
 .button-row {

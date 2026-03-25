@@ -18,7 +18,7 @@ function formatSelectedSlots(
   }>,
 ) {
   if (slots.length === 0) {
-    return "I did not pick a specific time yet, but I would still like to connect during the event week if it makes sense.";
+    return "I did not pick a specific time yet, but I would still like to connect during OHBM 2026 if it makes sense.";
   }
 
   return slots

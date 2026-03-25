@@ -72,19 +72,17 @@ export function RequesterSearchPage() {
           }}
         />
       </section>
-      <div className="results-layout">
-        <MatchedExpertList
-          experts={matchResponse.matches}
-          selectedExpertId={selectedExpertId}
-          onToggleExpert={(expertId) =>
-            setSelectedExpertId((current) => (current === expertId ? null : expertId))
-          }
-        />
-        <OutreachComposer
-          latestQuery={latestQuery}
-          selectedExperts={selectedExperts}
-        />
-      </div>
+      <MatchedExpertList
+        experts={matchResponse.matches}
+        selectedExpertId={selectedExpertId}
+        onToggleExpert={(expertId) =>
+          setSelectedExpertId((current) => (current === expertId ? null : expertId))
+        }
+      />
+      <OutreachComposer
+        latestQuery={latestQuery}
+        selectedExperts={selectedExperts}
+      />
     </div>
   );
 }

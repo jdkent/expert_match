@@ -4,7 +4,7 @@ test("expert profile submission and access-key management flow", async ({ page }
   await page.goto("/experts");
   await page.getByLabel("Full name").fill("Ada Lovelace");
   await page.getByLabel("Email").fill("ada@example.org");
-  await page.getByLabel("Expertise entries").fill("Metadata workflows");
+  await page.getByLabel("Expertise entry 1").fill("Metadata workflows");
   await Promise.all([
     page.waitForResponse((response) => response.url().includes("/api/v1/experts")),
     page.getByText("Submit profile").click(),

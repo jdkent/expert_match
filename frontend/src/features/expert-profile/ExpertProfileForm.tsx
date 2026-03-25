@@ -19,7 +19,6 @@ const emptyForm = {
   linkedin_identifier: "",
   bluesky_identifier: "",
   github_handle: "",
-  expertise_entries: "",
 };
 
 async function copyText(value: string) {
@@ -29,6 +28,7 @@ async function copyText(value: string) {
 export function ExpertProfileForm({ onCreated }: Props) {
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
+  const [expertiseEntries, setExpertiseEntries] = useState([""]);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>(
     canonicalSlots.map((slot) => slot.slot_id),
   );
@@ -40,10 +40,7 @@ export function ExpertProfileForm({ onCreated }: Props) {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const expertise_entries = form.expertise_entries
-        .split("\n")
-        .map((entry) => entry.trim())
-        .filter(Boolean);
+      const expertise_entries = expertiseEntries.map((entry) => entry.trim()).filter(Boolean);
       return expertProfilesApi.createProfile({
         ...form,
         orcid_id: form.orcid_id || null,
@@ -68,7 +65,7 @@ export function ExpertProfileForm({ onCreated }: Props) {
       <div>
         <h2>Publish your profile</h2>
         <p className="muted">
-          No account required. Enter each expertise topic on its own line. The same
+          No account required. Add one short expertise topic per row. The same
           form and API routes work in local development and behind production ingress.
         </p>
       </div>
@@ -94,16 +91,48 @@ export function ExpertProfileForm({ onCreated }: Props) {
             />
           </label>
         ))}
-        <label className="field">
+        <div className="field">
           <span>Expertise entries</span>
-          <textarea
-            name="expertise_entries"
-            value={form.expertise_entries}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, expertise_entries: event.target.value }))
-            }
-          />
-        </label>
+          <div className="expertise-rows">
+            {expertiseEntries.map((entry, index) => (
+              <div key={`expertise-entry-${index}`} className="expertise-row">
+                <input
+                  aria-label={`Expertise entry ${index + 1}`}
+                  value={entry}
+                  onChange={(event) =>
+                    setExpertiseEntries((current) =>
+                      current.map((candidate, candidateIndex) =>
+                        candidateIndex === index ? event.target.value : candidate,
+                      ),
+                    )
+                  }
+                />
+                {expertiseEntries.length > 1 ? (
+                  <button
+                    type="button"
+                    className="button-secondary expertise-remove"
+                    onClick={() =>
+                      setExpertiseEntries((current) =>
+                        current.filter((_, candidateIndex) => candidateIndex !== index),
+                      )
+                    }
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="button-row">
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() => setExpertiseEntries((current) => [...current, ""])}
+            >
+              Add another expertise
+            </button>
+          </div>
+        </div>
       </div>
       <div className="stack">
         <div>

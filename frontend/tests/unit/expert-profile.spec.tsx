@@ -25,7 +25,7 @@ describe("ExpertProfileForm", () => {
     renderWithProviders(<ExpertProfileForm onCreated={() => undefined} />);
     fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Ada Lovelace" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ada@example.org" } });
-    fireEvent.change(screen.getByLabelText("Expertise entries"), {
+    fireEvent.change(screen.getByLabelText("Expertise entry 1"), {
       target: { value: "Metadata workflows" },
     });
     fireEvent.click(screen.getByText("Submit profile"));
@@ -40,5 +40,14 @@ describe("ExpertProfileForm", () => {
       "/api/v1/experts",
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("lets experts add more than one expertise row", () => {
+    renderWithProviders(<ExpertProfileForm onCreated={() => undefined} />);
+
+    fireEvent.click(screen.getByText("Add another expertise"));
+
+    expect(screen.getByLabelText("Expertise entry 1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Expertise entry 2")).toBeInTheDocument();
   });
 });
