@@ -3,7 +3,7 @@ from functools import lru_cache
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_MATCH_ACCEPTANCE_THRESHOLD = 0.51
+DEFAULT_MATCH_ACCEPTANCE_THRESHOLD = 0.60
 DEFAULT_LEXICAL_SEARCH_TOP_K = 50
 DEFAULT_SEMANTIC_SEARCH_TOP_K = 25
 DEFAULT_RRF_K = 15
