@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-expert_match}
+      POSTGRES_USER: ${POSTGRES_USER:-expert_match}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-expert_match}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-expert_match} -d ${POSTGRES_DB:-expert_match}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mailpit:
+    image: axllent/mailpit:v1.25
+    expose:
+      - "1025"
+      - "8025"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8000}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:5173}
+      APP_EMBEDDING_PROVIDER: ${APP_EMBEDDING_PROVIDER:-specter2}
+      APP_EMBEDDING_MODEL_NAME: ${APP_EMBEDDING_MODEL_NAME:-allenai/specter2_base}
+      APP_EMBEDDING_DOCUMENT_ADAPTER_NAME: ${APP_EMBEDDING_DOCUMENT_ADAPTER_NAME:-allenai/specter2}
+      APP_EMBEDDING_QUERY_ADAPTER_NAME: ${APP_EMBEDDING_QUERY_ADAPTER_NAME:-allenai/specter2_adhoc_query}
+      APP_EMBEDDING_DIMENSION: ${APP_EMBEDDING_DIMENSION:-768}
+      APP_EMAIL_TRANSPORT: ${APP_EMAIL_TRANSPORT:-smtp}
+      APP_SMTP_HOST: ${APP_SMTP_HOST:-mailpit}
+      APP_SMTP_PORT: ${APP_SMTP_PORT:-1025}
+      APP_SMTP_USE_TLS: ${APP_SMTP_USE_TLS:-false}
+      APP_ORCID_LIVE_VALIDATION: ${APP_ORCID_LIVE_VALIDATION:-true}
+      APP_OPENALEX_ENABLED: ${APP_OPENALEX_ENABLED:-true}
+      APP_OPENALEX_EMAIL: ${APP_OPENALEX_EMAIL:-jamesdkent21@gmail.com}
+      POSTGRES_DSN: ${POSTGRES_DSN:-postgresql+psycopg://expert_match:expert_match@postgres:5432/expert_match}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    expose:
+      - "8000"
+    volumes:
+      - backend_model_cache:/tmp/expert-match-model-cache
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: development
+    environment:
+      VITE_API_BASE: ${VITE_API_BASE:-}
+      VITE_PROXY_TARGET: ${VITE_PROXY_TARGET:-http://backend:8000}
+    depends_on:
+      backend:
+        condition: service_started
+    expose:
+      - "5173"
+
+volumes:
+  backend_model_cache:
+  postgres_data:

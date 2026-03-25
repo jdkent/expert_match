@@ -1,0 +1,116 @@
+name: Deploy To AWS
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      BACKEND_REPOSITORY: ${{ vars.ECR_BACKEND_REPOSITORY || 'expert-match-backend' }}
+      FRONTEND_REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY || 'expert-match-frontend' }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      APP_PUBLIC_ORIGIN: ${{ vars.APP_PUBLIC_ORIGIN }}
+      OPENALEX_API_KEY: ${{ secrets.APP_OPENALEX_API_KEY }}
+      POSTGRES_DSN: ${{ secrets.POSTGRES_DSN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate required deploy inputs
+        run: |
+          test -n "${EC2_INSTANCE_ID}"
+          test -n "${APP_PUBLIC_ORIGIN}"
+          test -n "${POSTGRES_DSN}"
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f backend/Dockerfile -t "${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}" .
+          docker push "${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}"
+          echo "BACKEND_IMAGE=${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}" >> "$GITHUB_ENV"
+
+      - name: Build and push frontend image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f frontend/Dockerfile --target production -t "${REGISTRY}/${FRONTEND_REPOSITORY}:${IMAGE_TAG}" .
+          docker push "${REGISTRY}/${FRONTEND_REPOSITORY}:${IMAGE_TAG}"
+          echo "FRONTEND_IMAGE=${REGISTRY}/${FRONTEND_REPOSITORY}:${IMAGE_TAG}" >> "$GITHUB_ENV"
+
+      - name: Prepare deploy assets
+        run: |
+          {
+            echo "BACKEND_IMAGE=${BACKEND_IMAGE}"
+            echo "FRONTEND_IMAGE=${FRONTEND_IMAGE}"
+            echo "APP_PUBLIC_ORIGIN=${APP_PUBLIC_ORIGIN}"
+            echo "APP_EMAIL_TRANSPORT=capture"
+            echo "POSTGRES_DSN=${POSTGRES_DSN}"
+            if [ -n "${OPENALEX_API_KEY}" ]; then
+              echo "APP_OPENALEX_API_KEY=${OPENALEX_API_KEY}"
+            fi
+          } > deploy/aws/compose/.env.runtime
+          base64 -w 0 deploy/aws/compose/docker-compose.prod.yml > /tmp/docker-compose.prod.yml.b64
+          base64 -w 0 deploy/aws/compose/.env.runtime > /tmp/runtime.env.b64
+
+      - name: Deploy on EC2 via SSM
+        run: |
+          COMPOSE_B64="$(cat /tmp/docker-compose.prod.yml.b64)"
+          ENV_B64="$(cat /tmp/runtime.env.b64)"
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          COMMAND_ID="$(
+            aws ssm send-command \
+              --instance-ids "${EC2_INSTANCE_ID}" \
+              --document-name "AWS-RunShellScript" \
+              --comment "Deploy Expert Match ${GITHUB_SHA}" \
+              --parameters commands="[
+                \"set -euxo pipefail\",
+                \"mkdir -p /opt/expert-match\",
+                \"printf '%s' '${COMPOSE_B64}' | base64 -d >/opt/expert-match/docker-compose.yml\",
+                \"printf '%s' '${ENV_B64}' | base64 -d >/opt/expert-match/.env\",
+                \"aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com\",
+                \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env pull\",
+                \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env run --rm backend alembic upgrade head\",
+                \"docker compose -f /opt/expert-match/docker-compose.yml --env-file /opt/expert-match/.env up -d\"
+              ]" \
+              --query "Command.CommandId" \
+              --output text
+          )"
+
+          for attempt in $(seq 1 60); do
+            STATUS="$(aws ssm get-command-invocation --command-id "${COMMAND_ID}" --instance-id "${EC2_INSTANCE_ID}" --query Status --output text || true)"
+            case "${STATUS}" in
+              Success)
+                exit 0
+                ;;
+              Failed|Cancelled|TimedOut|Cancelling)
+                aws ssm get-command-invocation --command-id "${COMMAND_ID}" --instance-id "${EC2_INSTANCE_ID}"
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+
+          echo "Timed out waiting for SSM deployment command ${COMMAND_ID}"
+          aws ssm get-command-invocation --command-id "${COMMAND_ID}" --instance-id "${EC2_INSTANCE_ID}" || true
+          exit 1

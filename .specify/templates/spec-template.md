@@ -95,6 +95,22 @@
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
+### Non-Functional Requirements
+
+- **NFR-001**: System MUST [measurable latency, reliability, or operability target]
+- **NFR-002**: System MUST [measurable data protection, recovery, or observability target]
+
+### Benchmark Budgets
+
+- **BB-001**: Representative benchmark runs MUST [dataset sizes, workloads, or scale assumptions]
+- **BB-002**: Benchmark results MUST [performance or quality threshold]
+
+### Deployment Expectations
+
+- **DE-001**: Stakeholders MUST be able to validate [critical user flows] in a
+  pre-release environment before launch.
+- **DE-002**: Production deployment MUST document [hosting model, rollback, or backup expectations]
+
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]

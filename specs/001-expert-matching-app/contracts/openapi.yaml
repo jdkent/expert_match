@@ -1,0 +1,331 @@
+openapi: 3.1.0
+info:
+  title: Expert Match API
+  version: 0.6.0
+  description: API contract for public expert profile intake, ORCID enrichment,
+    OHBM 2026 Bordeaux availability, email-based expert profile editing and deletion,
+    distinct-expert matching, and outreach with optional multiple timeslots.
+servers:
+  - url: https://api.example.com
+  - url: http://localhost:8000
+paths:
+  /api/v1/experts:
+    post:
+      operationId: createExpertProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpertProfileInput"
+      responses:
+        "202":
+          description: Expert profile accepted
+  /api/v1/experts/verify-email:
+    post:
+      operationId: verifyExpertEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        "200":
+          description: Email verified
+  /api/v1/expert-edit-lookup:
+    post:
+      operationId: requestExpertEdit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "202":
+          description: Expert edit email sent if a matching profile exists
+  /api/v1/expert-edit-sessions/{sessionToken}/profile:
+    patch:
+      operationId: updateRecoveredExpertProfile
+      parameters:
+        - name: sessionToken
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpertProfileEditInput"
+      responses:
+        "202":
+          description: Expert profile edit accepted
+    delete:
+      operationId: deleteRecoveredExpertProfile
+      parameters:
+        - name: sessionToken
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpertProfileDeleteInput"
+      responses:
+        "202":
+          description: Expert profile deletion accepted
+  /api/v1/experts/{expertId}/availability:
+    get:
+      operationId: getExpertAvailability
+      parameters:
+        - name: expertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Expert availability
+  /api/v1/match-queries:
+    post:
+      operationId: createMatchQuery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchQueryInput"
+      responses:
+        "201":
+          description: Match query created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchQueryResponse"
+  /api/v1/outreach-requests:
+    post:
+      operationId: createOutreachRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutreachRequestInput"
+      responses:
+        "201":
+          description: Outreach request created
+components:
+  schemas:
+    ExpertProfileInput:
+      type: object
+      required:
+        - full_name
+        - email
+        - expertise_entries
+      properties:
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        orcid_id:
+          type: string
+        website_url:
+          type: string
+          format: uri
+        x_handle:
+          type: string
+        linkedin_identifier:
+          type: string
+        bluesky_identifier:
+          type: string
+        github_handle:
+          type: string
+        expertise_entries:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        available_slot_ids:
+          type: array
+          description: Optional. If omitted, all canonical slots default to available.
+          items:
+            type: string
+            format: uuid
+    ExpertProfileEditInput:
+      type: object
+      minProperties: 1
+      properties:
+        full_name:
+          type: string
+        orcid_id:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Omit to keep the current ORCID, set to null to remove it.
+        website_url:
+          oneOf:
+            - type: string
+              format: uri
+            - type: "null"
+        x_handle:
+          oneOf:
+            - type: string
+            - type: "null"
+        linkedin_identifier:
+          oneOf:
+            - type: string
+            - type: "null"
+        bluesky_identifier:
+          oneOf:
+            - type: string
+            - type: "null"
+        github_handle:
+          oneOf:
+            - type: string
+            - type: "null"
+        expertise_entries:
+          type: array
+          minItems: 1
+          description: Replaces the expert's active expertise list.
+          items:
+            type: string
+        available_slot_ids:
+          type: array
+          description: If provided, replaces the expert's available canonical slots.
+          items:
+            type: string
+            format: uuid
+    ExpertProfileDeleteInput:
+      type: object
+      required: [email_confirmation]
+      properties:
+        email_confirmation:
+          type: string
+          format: email
+          description: Must exactly match the expert's registered email address.
+    MatchQueryInput:
+      type: object
+      required:
+        - requester
+        - query_text
+      properties:
+        requester:
+          type: object
+          required: [full_name, email]
+          properties:
+            full_name:
+              type: string
+            email:
+              type: string
+              format: email
+        query_text:
+          type: string
+    MatchedExpertSummary:
+      type: object
+      required:
+        - expert_id
+        - full_name
+        - aggregate_similarity_score
+        - matched_document_excerpt
+      properties:
+        expert_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        aggregate_similarity_score:
+          type: number
+        matched_document_excerpt:
+          type: string
+        website_url:
+          type: string
+          format: uri
+        x_handle:
+          type: string
+        linkedin_identifier:
+          type: string
+        bluesky_identifier:
+          type: string
+        github_handle:
+          type: string
+    MatchQueryResponse:
+      type: object
+      required:
+        - match_query_id
+        - applied_similarity_threshold
+        - matches
+      properties:
+        match_query_id:
+          type: string
+          format: uuid
+        applied_similarity_threshold:
+          type: number
+          default: 0.5
+        matches:
+          type: array
+          maxItems: 5
+          description: Distinct experts only. May contain fewer than 5 entries.
+          items:
+            $ref: "#/components/schemas/MatchedExpertSummary"
+    OutreachRecipientInput:
+      type: object
+      required: [expert_id, availability_slot_ids]
+      properties:
+        expert_id:
+          type: string
+          format: uuid
+        availability_slot_ids:
+          type: array
+          description: May be empty when the expert has no availability or the requester is not proposing times.
+          items:
+            type: string
+            format: uuid
+    OutreachRequestInput:
+      type: object
+      required:
+        - match_query_id
+        - primary_expert_id
+        - requester
+        - recipients
+        - message_body
+      properties:
+        match_query_id:
+          type: string
+          format: uuid
+        primary_expert_id:
+          type: string
+          format: uuid
+          description: Must match one of the selected recipients.
+        requester:
+          type: object
+          required: [full_name, email]
+          properties:
+            full_name:
+              type: string
+            email:
+              type: string
+              format: email
+        recipients:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OutreachRecipientInput"
+        message_body:
+          type: string

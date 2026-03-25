@@ -1,0 +1,30 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    environment:
+      APP_ENV: production
+      APP_BASE_URL: ${APP_PUBLIC_ORIGIN}
+      APP_FRONTEND_URL: ${APP_PUBLIC_ORIGIN}
+      APP_SIMILARITY_THRESHOLD: "0.5"
+      APP_EMBEDDING_PROVIDER: ${APP_EMBEDDING_PROVIDER:-specter2}
+      APP_EMBEDDING_MODEL_NAME: ${APP_EMBEDDING_MODEL_NAME:-allenai/specter2_base}
+      APP_EMBEDDING_DOCUMENT_ADAPTER_NAME: ${APP_EMBEDDING_DOCUMENT_ADAPTER_NAME:-allenai/specter2}
+      APP_EMBEDDING_QUERY_ADAPTER_NAME: ${APP_EMBEDDING_QUERY_ADAPTER_NAME:-allenai/specter2_adhoc_query}
+      APP_EMBEDDING_DIMENSION: ${APP_EMBEDDING_DIMENSION:-768}
+      APP_EMAIL_TRANSPORT: ${APP_EMAIL_TRANSPORT:-capture}
+      APP_ORCID_LIVE_VALIDATION: ${APP_ORCID_LIVE_VALIDATION:-true}
+      APP_OPENALEX_ENABLED: ${APP_OPENALEX_ENABLED:-true}
+      APP_OPENALEX_EMAIL: ${APP_OPENALEX_EMAIL:-jamesdkent21@gmail.com}
+      APP_OPENALEX_API_KEY: ${APP_OPENALEX_API_KEY:-}
+      POSTGRES_DSN: ${POSTGRES_DSN}
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    depends_on:
+      - backend
+    restart: unless-stopped
+    ports:
+      - "80:80"

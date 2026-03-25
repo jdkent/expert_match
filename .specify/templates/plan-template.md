@@ -23,15 +23,28 @@
 **Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 **Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Performance Goals**: [domain-specific, include explicit latency/throughput targets and any retrieval benchmark budgets or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, include memory limits, rollout constraints, and benchmark hardware assumptions or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Confirm the design preserves the required service split: Vite frontend, Python
+  backend, and PostgreSQL database with clear API or contract boundaries.
+- Confirm local orchestration uses Docker Compose and AWS deployment uses the
+  simplest containerized topology justified by the feature's scale and operational
+  needs.
+- Confirm semantic retrieval uses SPECTER2 embeddings and cosine similarity, or
+  record the constitutional amendment required before proceeding.
+- Define benchmark coverage for affected retrieval or performance-sensitive paths,
+  including dataset sizes in the 10, 100, and 1,000-plus embedding range and the
+  latency or memory budgets they must satisfy.
+- Identify any rewrite that removes legacy behavior and verify obsolete code paths
+  will be deleted rather than preserved behind compatibility shims.
+- Confirm tests, structured logging, and health or readiness checks are scoped for
+  all changed services.
 
 ## Project Structure
 
@@ -82,6 +95,11 @@ frontend/
 │   ├── pages/
 │   └── services/
 └── tests/
+
+deploy/
+└── [deployment artifacts matching the chosen hosting model]
+
+docker-compose.yml
 
 # [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
 api/
