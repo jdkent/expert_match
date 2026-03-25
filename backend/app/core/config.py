@@ -3,7 +3,7 @@ from functools import lru_cache
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_SIMILARITY_THRESHOLD = 0.3
+DEFAULT_SIMILARITY_THRESHOLD = 0.5
 DEFAULT_SHORT_QUERY_TOKEN_LIMIT = 3
 DEFAULT_SHORT_QUERY_LEXICAL_OVERLAP_FLOOR = 1
 LEGACY_EMBEDDING_MODEL_NAME = "allenai/specter2"
