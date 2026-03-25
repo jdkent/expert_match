@@ -87,3 +87,28 @@ development database so they remain available across backend restarts.
 - Keep the backend internal to the Compose network
 - Point `POSTGRES_DSN` at Amazon RDS for PostgreSQL instead of a production database container
 - The current frontend is draft-only for requester outreach, so the AWS env template defaults `APP_EMAIL_TRANSPORT` to `capture` and does not require SMTP settings
+
+## AWS instance operations
+
+To stop the current production EC2 instance from the command line:
+
+```bash
+aws ec2 stop-instances \
+  --profile admin \
+  --region us-east-1 \
+  --instance-ids i-0d28bb7bab5cce119
+
+aws ec2 wait instance-stopped \
+  --profile admin \
+  --region us-east-1 \
+  --instance-ids i-0d28bb7bab5cce119
+```
+
+To start it again:
+
+```bash
+aws ec2 start-instances \
+  --profile admin \
+  --region us-east-1 \
+  --instance-ids i-0d28bb7bab5cce119
+```
