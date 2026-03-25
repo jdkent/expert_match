@@ -1,4 +1,5 @@
 import { MatchedExpert } from "../../services/matching";
+import { SocialLinkChips } from "./SocialLinkChips";
 
 type Props = {
   experts: MatchedExpert[];
@@ -42,21 +43,13 @@ export function MatchedExpertList({ experts, selectedExpertId, onToggleExpert }:
             </div>
             <h3>{expert.full_name}</h3>
             <p>{expert.matched_document_excerpt}</p>
-            <div className="chip-row">
-              {expert.website_url ? (
-                <a className="chip" href={expert.website_url} target="_blank" rel="noreferrer">
-                  Website
-                </a>
-              ) : null}
-              {expert.x_handle ? <span className="chip">X: {expert.x_handle}</span> : null}
-              {expert.linkedin_identifier ? (
-                <span className="chip">LinkedIn: {expert.linkedin_identifier}</span>
-              ) : null}
-              {expert.bluesky_identifier ? (
-                <span className="chip">Bluesky: {expert.bluesky_identifier}</span>
-              ) : null}
-              {expert.github_handle ? <span className="chip">GitHub: {expert.github_handle}</span> : null}
-            </div>
+            <SocialLinkChips
+              websiteUrl={expert.website_url}
+              xHandle={expert.x_handle}
+              linkedinIdentifier={expert.linkedin_identifier}
+              blueskyIdentifier={expert.bluesky_identifier}
+              githubHandle={expert.github_handle}
+            />
           </article>
         ))}
       </div>
