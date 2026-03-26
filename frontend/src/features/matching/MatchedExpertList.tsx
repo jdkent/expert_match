@@ -13,8 +13,7 @@ export function MatchedExpertList({ experts, selectedExpertId, onToggleExpert }:
       <div>
         <h2>Matched experts</h2>
         <p className="muted">
-          One expert can only occupy one result slot, even if several documents match.
-          Review the shortlist first, then choose the single expert you want to draft for.
+          Review which experts match your criteria, then draft a message to the selected expert.
         </p>
       </div>
       <div className="matched-expert-scroll">

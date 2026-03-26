@@ -93,8 +93,28 @@ button {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.site-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+}
+
 .site-footer-text {
   margin: 0;
+}
+
+.site-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+
+.site-footer-brand-logo {
+  display: block;
+  width: auto;
+  height: 1.65rem;
 }
 
 .site-footer-link {
@@ -126,13 +146,14 @@ button {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+  color: #fff;
 }
 
-.brand-logo {
+.brand-mark {
   display: block;
-  width: auto;
-  height: 2.2rem;
-  max-width: min(38vw, 10.5rem);
+  width: 4rem;
+  height: 4rem;
+  flex: 0 0 auto;
 }
 
 .topbar-action {
@@ -146,6 +167,20 @@ button {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+.topbar-action-prominent {
+  color: #0b0d11;
+  font-weight: 700;
+  background: linear-gradient(180deg, #f5f7fa 0%, #d9dee5 100%);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.34) inset;
+}
+
+.topbar-action-prominent:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #e5e9ef 100%);
 }
 
 .page-stack,
@@ -864,6 +899,10 @@ button {
   }
 
   .topbar {
+    align-items: flex-start;
+  }
+
+  .site-footer-row {
     align-items: flex-start;
   }
 

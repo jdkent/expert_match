@@ -1,14 +1,31 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { MatchQueryForm } from "../features/matching/MatchQueryForm";
 import { MatchedExpertList } from "../features/matching/MatchedExpertList";
 import { OutreachComposer } from "../features/outreach/OutreachComposer";
 import { MatchedExpert, MatchResponse } from "../services/matching";
 
+export const SEARCH_PAGE_RESET_PARAM = "reset";
+
 export function RequesterSearchPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [matchResponse, setMatchResponse] = useState<MatchResponse | null>(null);
   const [latestQuery, setLatestQuery] = useState("");
   const [selectedExpertId, setSelectedExpertId] = useState<string | null>(null);
+  const resetRequested = searchParams.get(SEARCH_PAGE_RESET_PARAM) === "1";
+
+  useEffect(() => {
+    if (!resetRequested) {
+      return;
+    }
+
+    setMatchResponse(null);
+    setLatestQuery("");
+    setSelectedExpertId(null);
+    navigate("/", { replace: true });
+  }, [navigate, resetRequested]);
 
   const selectedExperts = useMemo<MatchedExpert[]>(
     () => matchResponse?.matches.filter((match) => match.expert_id === selectedExpertId) ?? [],

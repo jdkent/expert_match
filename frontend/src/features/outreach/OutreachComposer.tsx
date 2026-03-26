@@ -120,8 +120,8 @@ export function OutreachComposer({ latestQuery, selectedExperts }: Props) {
       <div>
         <h2>Email draft</h2>
         <p className="muted">
-          Pick one preferred expert, adjust the note if needed, then copy the draft into
-          your own email client. The app does not send it for you.
+          Pick your preferred expert, adjust the note if needed, then copy the draft into
+          your own email client (or open the draft directly into your email client).
         </p>
       </div>
       {selectedExperts.length > 0 ? (
@@ -230,7 +230,7 @@ export function OutreachComposer({ latestQuery, selectedExperts }: Props) {
       ) : (
         <div className="result-card">
           <p className="muted">
-            Select one expert to unlock the draft.
+            Select an expert to see the email draft.
           </p>
         </div>
       )}

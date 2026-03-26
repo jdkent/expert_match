@@ -25,7 +25,7 @@ describe("Layout", () => {
       "href",
       "mailto:jamesdkent21@gmail.com",
     );
-    expect(screen.getByText(/Questions or feedback\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/Questions or comments\?/i)).toBeInTheDocument();
   });
 
   it("shows both back links on the expert manage page", () => {

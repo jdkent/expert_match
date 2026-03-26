@@ -17,7 +17,7 @@ describe("OutreachComposer", () => {
       />,
     );
 
-    expect(screen.getByText("Select one expert to unlock the draft.")).toBeInTheDocument();
+    expect(screen.getByText("Select an expert to see the email draft.")).toBeInTheDocument();
   });
 
   it("loads availability and shows a copy-ready draft for the selected expert", async () => {
