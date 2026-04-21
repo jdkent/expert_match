@@ -140,29 +140,26 @@ They use the existing repo configuration:
 - secret: `AWS_ACCESS_KEY_ID`
 - secret: `AWS_SECRET_ACCESS_KEY`
 
-## Let's Encrypt on EC2
+## Deploy on this machine
 
-The production frontend can run in plain HTTP mode until a real certificate exists,
-then switch to HTTPS automatically once Let's Encrypt files are present.
+For this server-local deployment path, use the files under [`deploy/server/`](deploy/server/).
+The frontend joins the existing `nginx-proxy` Docker network and is routed by host
+name, so you do not need the AWS-specific deployment path for `ohbmatchmaker.org`.
 
-Before requesting the certificate:
+Typical sequence on this machine:
 
-1. Point `ohbmatchmaker.org` to the EC2 public IP.
-2. Open inbound `443/tcp` on the instance security group.
-3. Set `APP_DOMAIN=ohbmatchmaker.org` in `/opt/expert-match/.env` or the GitHub deploy env.
+1. Copy [`deploy/server/.env.production.example`](deploy/server/.env.production.example) to `.env.production` and set:
+   `APP_PUBLIC_ORIGIN=https://ohbmatchmaker.org`, `APP_DOMAIN=ohbmatchmaker.org`,
+   `VIRTUAL_HOST=ohbmatchmaker.org,www.ohbmatchmaker.org`,
+   `LETSENCRYPT_HOST=ohbmatchmaker.org,www.ohbmatchmaker.org`,
+   `LETSENCRYPT_EMAIL=jamesdkent21@gmail.com`, and your local Postgres credentials.
+2. Deploy the stack with `./deploy/server/deploy.sh --repo-root /var/www/expert_match --env-file .env.production`.
+3. Restore the database dump with `./deploy/server/restore_dump.sh --repo-root /var/www/expert_match --env-file .env.production --dump /var/www/expert_match/expert_match-rds-2026-04-21-131803.dump`.
+4. Verify the app through `https://ohbmatchmaker.org` once DNS has propagated to `128.83.207.2`.
 
-To request the initial certificate on the host:
+Cloudflare should point `ohbmatchmaker.org` at the server public IPv4 address:
 
-```bash
-chmod +x /opt/expert-match/setup-letsencrypt.sh /opt/expert-match/renew-letsencrypt.sh
-/opt/expert-match/setup-letsencrypt.sh ohbmatchmaker.org jamesdkent21@gmail.com
-```
-
-To renew manually:
-
-```bash
-/opt/expert-match/renew-letsencrypt.sh
-```
+- `128.83.207.2`
 
 ## Get the current number of "experts" in production
 

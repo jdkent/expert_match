@@ -83,3 +83,25 @@ cd /path/to/expert_match
   --env-file .env.production \
   --skip-backfills
 ```
+
+## Restore a production dump on this machine
+
+If you are moving off the external server and want to seed the local Docker
+PostgreSQL service from a PostgreSQL custom dump:
+
+```bash
+cd /path/to/expert_match
+/bin/bash ./deploy/server/restore_dump.sh \
+  --repo-root /path/to/expert_match \
+  --env-file .env.production \
+  --dump /path/to/expert_match-rds-2026-04-21-131803.dump
+```
+
+This script:
+
+- starts the local `postgres` service if needed
+- drops and recreates `POSTGRES_DB`
+- restores the dump into the local database with `pg_restore`
+
+Run the normal deploy first so the app images, schema code, and proxy wiring are in
+place, then restore the dump before starting full traffic cutover.
