@@ -98,6 +98,13 @@ development database so they remain available across backend restarts.
 
 ## AWS instance operations
 
+For a cheaper, interruption-tolerant production profile that uses EC2 Spot
+instances, see [deploy/aws/spot-interruption-tolerant-profile.md](deploy/aws/spot-interruption-tolerant-profile.md).
+
+The release deployment workflow now supports multi-arch image publishing through
+Docker Buildx. Set `DOCKER_PLATFORMS` in GitHub Actions repo variables if you want
+to override the default `linux/amd64,linux/arm64` manifest build.
+
 To stop the current production EC2 instance from the command line:
 
 ```bash

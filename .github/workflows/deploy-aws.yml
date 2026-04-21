@@ -15,6 +15,9 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       BACKEND_REPOSITORY: ${{ vars.ECR_BACKEND_REPOSITORY || 'expert-match-backend' }}
       FRONTEND_REPOSITORY: ${{ vars.ECR_FRONTEND_REPOSITORY || 'expert-match-frontend' }}
+      DOCKER_PLATFORMS: ${{ vars.DOCKER_PLATFORMS || 'linux/amd64,linux/arm64' }}
+      RUNTIME_ENV_SSM_PARAMETER: ${{ vars.RUNTIME_ENV_SSM_PARAMETER }}
+      COMPOSE_FILE_SSM_PARAMETER: ${{ vars.COMPOSE_FILE_SSM_PARAMETER }}
       EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
       APP_PUBLIC_ORIGIN: ${{ vars.APP_PUBLIC_ORIGIN }}
       APP_DOMAIN: ${{ vars.APP_DOMAIN }}
@@ -41,22 +44,44 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push backend image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -f backend/Dockerfile --target production -t "${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}" .
-          docker push "${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}"
-          echo "BACKEND_IMAGE=${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}" >> "$GITHUB_ENV"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: production
+          platforms: ${{ env.DOCKER_PLATFORMS }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.BACKEND_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
       - name: Build and push frontend image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          target: production
+          platforms: ${{ env.DOCKER_PLATFORMS }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Export image references
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -f frontend/Dockerfile --target production -t "${REGISTRY}/${FRONTEND_REPOSITORY}:${IMAGE_TAG}" .
-          docker push "${REGISTRY}/${FRONTEND_REPOSITORY}:${IMAGE_TAG}"
+          echo "BACKEND_IMAGE=${REGISTRY}/${BACKEND_REPOSITORY}:${IMAGE_TAG}" >> "$GITHUB_ENV"
           echo "FRONTEND_IMAGE=${REGISTRY}/${FRONTEND_REPOSITORY}:${IMAGE_TAG}" >> "$GITHUB_ENV"
 
       - name: Prepare deploy assets
@@ -77,6 +102,25 @@ jobs:
           base64 -w 0 deploy/aws/compose/.env.runtime > /tmp/runtime.env.b64
           base64 -w 0 deploy/aws/ec2/setup-letsencrypt.sh > /tmp/setup-letsencrypt.sh.b64
           base64 -w 0 deploy/aws/ec2/renew-letsencrypt.sh > /tmp/renew-letsencrypt.sh.b64
+
+      - name: Publish launch-time config to SSM
+        if: ${{ env.RUNTIME_ENV_SSM_PARAMETER != '' || env.COMPOSE_FILE_SSM_PARAMETER != '' }}
+        run: |
+          if [ -n "${RUNTIME_ENV_SSM_PARAMETER}" ]; then
+            aws ssm put-parameter \
+              --name "${RUNTIME_ENV_SSM_PARAMETER}" \
+              --type SecureString \
+              --value "$(cat deploy/aws/compose/.env.runtime)" \
+              --overwrite
+          fi
+
+          if [ -n "${COMPOSE_FILE_SSM_PARAMETER}" ]; then
+            aws ssm put-parameter \
+              --name "${COMPOSE_FILE_SSM_PARAMETER}" \
+              --type String \
+              --value "$(cat deploy/aws/compose/docker-compose.prod.yml)" \
+              --overwrite
+          fi
 
       - name: Deploy on EC2 via SSM
         run: |

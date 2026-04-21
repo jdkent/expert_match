@@ -1,0 +1,97 @@
+name: Deploy To Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Git ref to deploy on the server
+        required: false
+        type: string
+      run_backfills:
+        description: Run the recorded backfill job after migrations
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_REPO_ROOT: ${{ vars.DEPLOY_REPO_ROOT }}
+      DEPLOY_ENV_FILE: ${{ vars.DEPLOY_ENV_FILE || '.env.production' }}
+      INPUT_GIT_REF: ${{ inputs.git_ref }}
+      INPUT_RUN_BACKFILLS: ${{ inputs.run_backfills }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate required deploy inputs
+        run: |
+          test -n "${DEPLOY_HOST}"
+          test -n "${DEPLOY_USER}"
+          test -n "${DEPLOY_REPO_ROOT}"
+          test -n "${DEPLOY_ENV_FILE}"
+
+      - name: Resolve deploy settings
+        run: |
+          if [ -n "${INPUT_GIT_REF}" ]; then
+            echo "DEPLOY_GIT_REF=${INPUT_GIT_REF}" >> "$GITHUB_ENV"
+          else
+            echo "DEPLOY_GIT_REF=${GITHUB_SHA}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add remote SSH server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Update server checkout
+        run: |
+          ssh \
+            -p "${DEPLOY_PORT}" \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=10 \
+            -o TCPKeepAlive=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" '
+            set -euo pipefail
+            cd "'"${DEPLOY_REPO_ROOT}"'"
+            git fetch origin --prune --tags
+            git reset --hard "'"${DEPLOY_GIT_REF}"'"
+          '
+
+      - name: Deploy on server
+        run: |
+          ssh \
+            -p "${DEPLOY_PORT}" \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=10 \
+            -o TCPKeepAlive=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" '
+            set -euo pipefail
+            cd "'"${DEPLOY_REPO_ROOT}"'"
+
+            if [ "'"${GITHUB_EVENT_NAME}"'" = "workflow_dispatch" ] && [ "'"${INPUT_RUN_BACKFILLS}"'" = "false" ]; then
+              /bin/bash ./deploy/server/deploy.sh \
+                --repo-root "'"${DEPLOY_REPO_ROOT}"'" \
+                --env-file "'"${DEPLOY_ENV_FILE}"'" \
+                --skip-backfills
+            else
+              /bin/bash ./deploy/server/deploy.sh \
+                --repo-root "'"${DEPLOY_REPO_ROOT}"'" \
+                --env-file "'"${DEPLOY_ENV_FILE}"'"
+            fi
+          '
