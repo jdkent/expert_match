@@ -168,3 +168,9 @@ To renew manually:
 
 ```bash
 CMD_ID=$(aws ssm send-command --profile admin --region us-east-1 --instance-ids i-0d28bb7bab5cce119 --document-name AWS-RunShellScript --parameters 'commands=["source /opt/expert-match/.env","export PSQL_DSN=${POSTGRES_DSN/postgresql+psycopg/postgresql}","docker run --rm postgres:17 psql \"$PSQL_DSN\" -tAc \"select count(*) from expert_profiles where deleted_at is null;\""]' --query 'Command.CommandId' --output text) && sleep 3 && aws ssm get-command-invocation --profile admin --region us-east-1 --command-id "$CMD_ID" --instance-id i-0d28bb7bab5cce119 --query 'StandardOutputContent' --output text
+```
+
+## Notes
+
+The domain name was purchased on hostinger
+I am redirecting traffic through cloudflare now

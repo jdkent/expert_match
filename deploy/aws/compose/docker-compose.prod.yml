@@ -23,8 +23,8 @@ services:
       APP_DOMAIN: ${APP_DOMAIN:-}
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
     volumes:
       - /opt/expert-match/letsencrypt:/etc/letsencrypt:ro
       - /opt/expert-match/acme-challenge:/var/www/certbot:ro
